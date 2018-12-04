@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "FressClient": {
+      "commandName": "Project",
+      "commandLineArgs": "34.227.82.243 3270"
+    }
+  }
+}
