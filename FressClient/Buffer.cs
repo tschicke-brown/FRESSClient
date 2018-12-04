@@ -7,13 +7,13 @@ using SFML.Window;
 
 namespace FressClient
 {
-    public class Buffer : Drawable
+    public class Buffer : Transformable, Drawable
     {
         private readonly Text _drawableText;
         private RectangleShape _cursor;
         private int _cursorIndex;
 
-        public int CharacterWidth;
+        public int CharacterWidth { get; set; }
 
         public uint CurrentChar
         {
@@ -30,6 +30,8 @@ namespace FressClient
             }
         }
 
+        private readonly object _bufferLock = new object();
+
         public Buffer(int characterWidth)
         {
             _drawableText = new Text(BufferText, Program.Font, Program.FontSize);
@@ -37,52 +39,58 @@ namespace FressClient
             CharacterWidth = characterWidth;
         }
 
-        public string BufferText { get; set; } = "";
+        public string BufferText { get; private set; } = "";
 
         public void Draw(RenderTarget target, RenderStates states)
         {
-            var size = _drawableText.Font.GetGlyph('a', _drawableText.CharacterSize, false, 0).Bounds;
-            float height = _drawableText.Font.GetLineSpacing(_drawableText.CharacterSize);
-            _cursor.Size = new Vector2f(size.Width, height - 1);
-
-
-            int cursorIndex = _cursorIndex;
-            var lines = BufferText.Split("\n");
-            Vector2f? cursorPos = null;
-            Vector2f currentPosition = new Vector2f(0, 0);
-            foreach (var line in lines)
+            lock (_bufferLock)
             {
-                var drawable = line;
-                Vector2f? pos;
-                while (drawable.Length > CharacterWidth)
+                states.Transform.Combine(Transform);
+                var size = _drawableText.Font.GetGlyph('a', _drawableText.CharacterSize, false, 0).Bounds;
+                float height = _drawableText.Font.GetLineSpacing(_drawableText.CharacterSize);
+                _cursor.Size = new Vector2f(size.Width, height - 1);
+
+
+                int cursorIndex = _cursorIndex;
+                var lines = BufferText.Split("\n");
+                Vector2f? cursorPos = null;
+                Vector2f currentPosition = new Vector2f(0, 0);
+                foreach (var line in lines)
                 {
-                    var l = drawable.Substring(0, CharacterWidth);
-                    drawable = drawable.Substring(CharacterWidth);
-                    pos = DrawString(l, target, currentPosition, cursorIndex);
+                    var drawable = line;
+                    Vector2f? pos;
+                    while (drawable.Length > CharacterWidth)
+                    {
+                        var l = drawable.Substring(0, CharacterWidth);
+                        drawable = drawable.Substring(CharacterWidth);
+                        pos = DrawString(l, target, states, currentPosition, cursorIndex);
+                        cursorPos = cursorPos ?? pos;
+                        cursorIndex -= l.Length;
+                        currentPosition.Y += height;
+                    }
+
+                    pos = DrawString(drawable, target, states, currentPosition, cursorIndex);
                     cursorPos = cursorPos ?? pos;
-                    cursorIndex -= l.Length;
+                    cursorIndex -= drawable.Length + 1;
                     currentPosition.Y += height;
                 }
-                pos = DrawString(drawable, target, currentPosition, cursorIndex);
-                cursorPos = cursorPos ?? pos;
-                cursorIndex -= drawable.Length + 1;
-                currentPosition.Y += height;
-            }
 
-            if (cursorPos == null)
-            {
-                Vector2f p = _drawableText.FindCharacterPos((uint)_drawableText.DisplayedString.Length);
-                cursorPos = new Vector2f(p.X, currentPosition.Y - height);
+                if (cursorPos == null)
+                {
+                    Vector2f p = _drawableText.FindCharacterPos((uint) _drawableText.DisplayedString.Length);
+                    cursorPos = new Vector2f(p.X, currentPosition.Y - height);
+                }
+
+                _cursor.Position = new Vector2f(cursorPos.Value.X, cursorPos.Value.Y + 1);
+                target.Draw(_cursor, states);
             }
-            _cursor.Position = new Vector2f(cursorPos.Value.X, cursorPos.Value.Y + 1);
-            target.Draw(_cursor);
         }
 
-        private Vector2f? DrawString(string s, RenderTarget target, Vector2f position, int cursorPos)
+        private Vector2f? DrawString(string s, RenderTarget target, RenderStates states, Vector2f position, int cursorPos)
         {
             _drawableText.DisplayedString = s;
             _drawableText.Position = position;
-            target.Draw(_drawableText);
+            target.Draw(_drawableText, states);
             if (cursorPos <= s.Length && cursorPos >= 0)
             {
                 var characterPos = _drawableText.FindCharacterPos((uint) cursorPos);
@@ -94,15 +102,19 @@ namespace FressClient
 
         public void HandleText(TextEventArgs args)
         {
-            var newChar = args.Unicode;
-            if (newChar == "\b")
+            lock (_bufferLock)
             {
-                Backspace();
-                return;
+                var newChar = args.Unicode;
+                if (newChar == "\b")
+                {
+                    Backspace();
+                    return;
+                }
+
+                if (newChar == "\r") newChar = "\n";
+                BufferText = BufferText.Insert(_cursorIndex, newChar);
+                CursorRight();
             }
-            if (newChar == "\r") newChar = "\n";
-            BufferText = BufferText.Insert(_cursorIndex, newChar);
-            CursorRight();
         }
 
         public void Backspace()
@@ -123,6 +135,20 @@ namespace FressClient
         public void CursorRight()
         {
             _cursorIndex = Math.Min(BufferText.Length, _cursorIndex + 1);
+        }
+
+        public void GoToEnd()
+        {
+            _cursorIndex = BufferText.Length;
+        }
+
+        public void Append(string s)
+        {
+            lock (_bufferLock)
+            {
+                BufferText += s.Replace("\r", "");
+                GoToEnd();
+            }
         }
     }
 }

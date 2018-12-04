@@ -14,37 +14,19 @@ namespace FressClient
     class Program
     {
 
-        static async Task Main(string[] args)
+        static void Main(string[] args)
         {
             Rebex.Licensing.Key = "==AKOz7Fgv0W1Kau2iJwlo61vuaQ1v05EfMcFXUgg6T5rQ==";
-            await Run(args);
+            Run(args);
         }
 
         public static Font Font;
         public static readonly uint FontSize = 14;
 
-        public static Buffer MainBuffer;
+        public static Buffer MainBuffer, OtherBuffer;
 
-        static async Task Run(string[] args)
+        static void Run(string[] args)
         {
-            var window = new RenderWindow(new VideoMode(640, 480), "FRESS");
-            window.KeyPressed += WindowOnKeyPressed;
-            window.TextEntered += Window_TextEntered;
-            window.Closed += WindowOnClosed;
-            Font = new Font("resources/courier.ttf");
-
-            MainBuffer = new Buffer(30);
-
-            while (window.IsOpen)
-            {
-                window.Clear(new SFML.Graphics.Color(0, 0, 30));
-                window.DispatchEvents();
-
-                window.Draw(MainBuffer);
-
-                window.Display();
-            }
-
             if (args.Length < 2)
             {
                 Console.WriteLine("Not enough arguments");
@@ -52,24 +34,49 @@ namespace FressClient
                 return;
             }
 
-            var ip = args[0];
-            var port = int.Parse(args[1]);
-            var server = new Telnet(ip, port);
-            var scripting = server.StartScripting();
-            scripting.Timeout = 300;
+            Font = new Font("resources/courier.ttf");
+            var charWidth = Font.GetGlyph('a', FontSize, false, 0).Bounds.Width;
 
-            var buffer = new byte[1024];
-            Console.WriteLine("Hello World!");
-            string line;
-            while ((line = Console.ReadLine()) != null)
+            var window = new RenderWindow(new VideoMode((uint) (charWidth * 66 * 2), 800), "FRESS");
+            window.KeyPressed += WindowOnKeyPressed;
+            window.TextEntered += Window_TextEntered;
+            window.Closed += WindowOnClosed;
+
+            MainBuffer = new Buffer(65);
+            OtherBuffer = new Buffer(65){Position = new Vector2f(charWidth * 65, 0)};
+
+            Task.Run(() =>
             {
-                if(!string.IsNullOrWhiteSpace(line))
-                    scripting.Send(line);
-                var res = scripting.ReadUntil(ScriptEvent.Timeout);
-                if (!string.IsNullOrEmpty(res))
+                var ip = args[0];
+                var port = int.Parse(args[1]);
+                var server = new Telnet(ip, port);
+                var scripting = server.StartScripting();
+                scripting.Timeout = 300;
+
+                string line;
+                while ((line = Console.ReadLine()) != null)
                 {
-                    Console.WriteLine(res);
+                    if (!string.IsNullOrWhiteSpace(line))
+                        scripting.Send(line);
+                    var res = scripting.ReadUntil(ScriptEvent.Timeout);
+                    if (!string.IsNullOrEmpty(res))
+                    {
+                        Console.WriteLine(res);
+                        MainBuffer.Append(res);
+                        OtherBuffer.Append(res);
+                    }
                 }
+            });
+
+            while (window.IsOpen)
+            {
+                window.Clear(new SFML.Graphics.Color(0, 0, 30));
+                window.DispatchEvents();
+
+                window.Draw(MainBuffer);
+                window.Draw(OtherBuffer);
+
+                window.Display();
             }
         }
 
@@ -90,7 +97,16 @@ namespace FressClient
 
         private static void Window_TextEntered(object sender, TextEventArgs e)
         {
-            MainBuffer.HandleText(e);
+            if (e.Unicode == "\t")
+            {
+                var buffer = MainBuffer;
+                MainBuffer = OtherBuffer;
+                OtherBuffer = buffer;
+            }
+            else
+            {
+                MainBuffer.HandleText(e);
+            }
         }
 
         private static void WindowOnClosed(object sender, EventArgs eventArgs)
