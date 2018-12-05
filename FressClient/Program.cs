@@ -21,7 +21,7 @@ namespace FressClient
         }
 
         public static Font Font;
-        public static readonly uint FontSize = 14;
+        public static readonly uint FontSize = 18;
 
         public Buffer CommandBuffer, ErrorBuffer;
         public Buffer[] Buffers;
@@ -276,11 +276,11 @@ namespace FressClient
                 return;
             }
 
-            Font = new Font("resources/courier.ttf");
-            CharWidth = Font.GetGlyph('a', FontSize, false, 0).Bounds.Width;
+            Font = new Font("resources/Inconsolata-Regular.ttf");
+            CharWidth = Font.GetGlyph('a', FontSize, false, 0).Advance;
             CharHeight = Font.GetLineSpacing(FontSize);
 
-            RenderWindow window = new RenderWindow(new VideoMode((uint) (CharWidth * 66 * 2), (uint) (CharHeight * 44)), "FRESS");
+            RenderWindow window = new RenderWindow(new VideoMode((uint) (CharWidth * 65 * 2), (uint) (CharHeight * 43)), "FRESS");
             window.KeyPressed += WindowOnKeyPressed;
             window.TextEntered += Window_TextEntered;
             window.MouseButtonReleased += Window_MouseButtonReleased;
@@ -292,6 +292,7 @@ namespace FressClient
             CommandBuffer = new Buffer(new Vector2i(65, 1)) {Position = new Vector2f(0, CharHeight)};
             ErrorBuffer = new Buffer(new Vector2i(65, 1)) {Position = new Vector2f(CharWidth * 65, CharHeight)};
             SetWindowConfig(WindowConfig.Config_2B);
+            CurrentBuffer.Append("This is a test string\nabout some text with\nmultiple lines");
 
             Buttons.Add(new Button("Test button"){ Position = new Vector2f(10, 60)});
             Buttons.Add(new Button("Open stuff"){Position = new Vector2f(10, 120)});
@@ -384,7 +385,7 @@ namespace FressClient
                 var bounds = new FloatRect(buffer.Position, new Vector2f(buffer.CharacterSize.X * CharWidth, buffer.CharacterSize.Y * CharHeight));
                 if (bounds.Contains(e.X, e.Y))
                 {
-                    buffer.HandleMouse(e.X - bounds.Left, e.Y - bounds.Top);
+                    buffer.HandleMouse(e.X, e.Y);
                     break;
                 }
             }

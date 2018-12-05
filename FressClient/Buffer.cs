@@ -2,6 +2,7 @@
 using SFML.System;
 using SFML.Window;
 using System;
+using System.Diagnostics;
 
 namespace FressClient
 {
@@ -48,6 +49,8 @@ namespace FressClient
                 _cursorIndex = _bufferText.Length;
             }
         }
+
+        public event Action<string> TextClicked; 
 
         public void Draw(RenderTarget target, RenderStates states)
         {
@@ -164,10 +167,31 @@ namespace FressClient
             int col = 0;
             for (int i = 0; i < BufferText.Length; ++i)
             {
-                col++;
-                //rect.
+                if (col == CharacterSize.X || BufferText[i] == '\n')
+                {
+                    col = 0;
+                    rect.Left = Position.X;
+                    rect.Top += rect.Height;
+                    if(BufferText[i] == '\n') continue;
+                }
 
+                if (rect.Contains(x, y))
+                {
+                    var end = Math.Min(BufferText.Length, i + 3);
+                    var start = end - 3;
+                    var str = BufferText.Substring(start, 3);
+                    OnTextClicked(str);
+                }
+
+                col++;
+                rect.Left += rect.Width;
             }
+        }
+
+        protected virtual void OnTextClicked(string str)
+        {
+            Debug.WriteLine(str);
+            TextClicked?.Invoke(str);
         }
     }
 }
