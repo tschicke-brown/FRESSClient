@@ -4,8 +4,10 @@ using SFML.Graphics;
 using SFML.System;
 using SFML.Window;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Color = SFML.Graphics.Color;
 
 namespace FressClient
 {
@@ -25,6 +27,8 @@ namespace FressClient
         public Buffer[] Buffers;
         public Buffer CurrentBuffer => Buffers[CurrentBufferIndex];
         public int CurrentBufferIndex;
+
+        public List<Button> Buttons = new List<Button>();
 
         public WindowConfig CurrentConfig;
 
@@ -167,6 +171,13 @@ namespace FressClient
                     return;
             }
 
+            foreach (var buffer in Buffers)
+            {
+                var bufferPosition = buffer.Position;
+                bufferPosition.Y += 2 * CharHeight;
+                buffer.Position = bufferPosition;
+            }
+
             CurrentBufferIndex = 0;
 
             CurrentConfig = config;
@@ -269,14 +280,23 @@ namespace FressClient
             CharWidth = Font.GetGlyph('a', FontSize, false, 0).Bounds.Width;
             CharHeight = Font.GetLineSpacing(FontSize);
 
-            RenderWindow window = new RenderWindow(new VideoMode((uint) (CharWidth * 66 * 2), (uint) (CharHeight * 42)), "FRESS");
+            RenderWindow window = new RenderWindow(new VideoMode((uint) (CharWidth * 66 * 2), (uint) (CharHeight * 44)), "FRESS");
             window.KeyPressed += WindowOnKeyPressed;
             window.TextEntered += Window_TextEntered;
+            window.MouseButtonReleased += Window_MouseButtonReleased;
             window.Closed += WindowOnClosed;
 
-            CommandBuffer = new Buffer(new Vector2i(65, 1)) {Position = new Vector2f(0, CharHeight * 40)};
-            ErrorBuffer = new Buffer(new Vector2i(65, 1)) {Position = new Vector2f(CharWidth * 65, CharHeight * 40)};
+            RenderWindow commandWindow = new RenderWindow(new VideoMode(400, 700), "Commands");
+            commandWindow.MouseButtonReleased += CommandWindowOnMouseButtonReleased;
+
+            CommandBuffer = new Buffer(new Vector2i(65, 1)) {Position = new Vector2f(0, CharHeight)};
+            ErrorBuffer = new Buffer(new Vector2i(65, 1)) {Position = new Vector2f(CharWidth * 65, CharHeight)};
             SetWindowConfig(WindowConfig.Config_2B);
+
+            Buttons.Add(new Button("Test button"){ Position = new Vector2f(10, 60)});
+            Buttons.Add(new Button("Open stuff"){Position = new Vector2f(10, 120)});
+            Buttons.Add(new Button("Close stuff"){Position = new Vector2f(10, 180)});
+            Buttons.Add(new Button("Do some other stuff"){Position = new Vector2f(10, 240)});
 
             string ip = args[0];
             int port = int.Parse(args[1]);
@@ -318,8 +338,10 @@ namespace FressClient
 
             while (window.IsOpen)
             {
-                window.Clear(new SFML.Graphics.Color(0, 0, 50));
+                window.Clear(new Color(0, 0, 50));
+                commandWindow.Clear(new Color(0xc0, 0xc0, 0xc0));
                 window.DispatchEvents();
+                commandWindow.DispatchEvents();
 
                 foreach (Buffer buffer in Buffers)
                 {
@@ -329,7 +351,42 @@ namespace FressClient
                 window.Draw(CommandBuffer);
                 window.Draw(ErrorBuffer);
 
+                foreach (var rectangleShape in Buttons)
+                {
+                    commandWindow.Draw(rectangleShape);
+                }
+
+                commandWindow.Display();
                 window.Display();
+            }
+        }
+
+        private void CommandWindowOnMouseButtonReleased(object sender, MouseButtonEventArgs mouseButtonEventArgs)
+        {
+            if (mouseButtonEventArgs.Button != Mouse.Button.Left)
+            {
+                return;
+            }
+            foreach (var button in Buttons)
+            {
+                button.TestTapped(mouseButtonEventArgs.X, mouseButtonEventArgs.Y);
+            }
+        }
+
+        private void Window_MouseButtonReleased(object sender, MouseButtonEventArgs e)
+        {
+            if (e.Button != Mouse.Button.Left)
+            {
+                return;
+            }
+            foreach (var buffer in Buffers)
+            {
+                var bounds = new FloatRect(buffer.Position, new Vector2f(buffer.CharacterSize.X * CharWidth, buffer.CharacterSize.Y * CharHeight));
+                if (bounds.Contains(e.X, e.Y))
+                {
+                    buffer.HandleMouse(e.X - bounds.Left, e.Y - bounds.Top);
+                    break;
+                }
             }
         }
 

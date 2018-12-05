@@ -157,5 +157,17 @@ namespace FressClient
             BufferText += s.Replace("\r", "");
             GoToEnd();
         }
+
+        public void HandleMouse(float x, float y)
+        {
+            var rect = new FloatRect(Position, new Vector2f(Program.CharWidth, Program.CharHeight));
+            int col = 0;
+            for (int i = 0; i < BufferText.Length; ++i)
+            {
+                col++;
+                //rect.
+
+            }
+        }
     }
 }
