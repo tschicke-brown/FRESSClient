@@ -127,7 +127,7 @@ namespace FressClient
             string str = BufferText;
             if (str.Length > 0 && _cursorIndex > 0)
             {
-                BufferText = str.Remove(_cursorIndex - 1, 1);
+                _bufferText = str.Remove(_cursorIndex - 1, 1);
                 CursorLeft();
             }
         }

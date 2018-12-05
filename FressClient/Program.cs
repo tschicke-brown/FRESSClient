@@ -211,7 +211,22 @@ namespace FressClient
 
                     Console.WriteLine($"Window Number: {windowNumber}, CurrentWindow: {currentWindowNumber}, Flag1: {flag1}, Flag2: {flag2}");
 
-                    if (!flag1.HasFlag(Flag1.TxSpecialMessage) && !flag1.HasFlag(Flag1.TxBinaryData))
+                    if (flag1.HasFlag(Flag1.TxSpecialMessage))
+                    {
+                        int space = content.IndexOf(' ');
+                        if (space >= 0)
+                        {
+                            string text = content.Substring(space + 1);
+                            //Console.WriteLine($"Data: {text}");
+                            if (text.Any())
+                            {
+                                CommandBuffer.BufferText = text.Replace("\r", "");
+                            }
+                        }
+
+                        DisplayingSpecialMessage = true;
+                    }
+                    else if (!flag1.HasFlag(Flag1.TxBinaryData))
                     {
                         int space = content.IndexOf(' ');
                         if (space >= 0)
@@ -227,6 +242,8 @@ namespace FressClient
                 }
             }
         }
+
+        public bool DisplayingSpecialMessage { get; set; }
 
         public Scripting Scripting;
         private void SubmitCommand(string command)
@@ -323,10 +340,10 @@ namespace FressClient
             switch (keyEventArgs.Code)
             {
                 case Keyboard.Key.Left:
-                    CurrentBuffer.CursorLeft();
+                    CommandBuffer.CursorLeft();
                     break;
                 case Keyboard.Key.Right:
-                    CurrentBuffer.CursorRight();
+                    CommandBuffer.CursorRight();
                     break;
                 default:
                     break;
@@ -342,6 +359,11 @@ namespace FressClient
             }
             else
             {
+                if (DisplayingSpecialMessage)
+                {
+                    CommandBuffer.BufferText = "";
+                    DisplayingSpecialMessage = false;
+                }
                 CommandBuffer.HandleText(e);
             }
         }
