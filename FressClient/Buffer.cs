@@ -15,6 +15,11 @@ namespace FressClient
 
         public Vector2i CharacterSize { get; set; }
 
+        public bool Active
+        {
+            set => _border.OutlineColor = value ? new Color(0xff, 0, 0) : new Color(0x7f, 0x7f, 0x7f);
+        }
+
         public uint CurrentChar
         {
             get

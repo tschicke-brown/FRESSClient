@@ -30,10 +30,11 @@ namespace FressClient
 
         public List<Button> Buttons = new List<Button>();
 
-        public WindowConfig CurrentConfig;
+        public WindowConfig CurrentConfig = WindowConfig.None;
 
         public enum WindowConfig
         {
+            None,
             Config_1A,
             Config_1B, //Don't use
             Config_2A,
@@ -195,9 +196,10 @@ namespace FressClient
         {
             if (index >= 0 && index < Buffers.Length)
             {
+                CurrentBuffer.Active = false;
                 CurrentBufferIndex = index;
+                CurrentBuffer.Active = true;
             }
-
         }
 
         private void ParseResponse(string res)
@@ -218,7 +220,7 @@ namespace FressClient
                         SetWindowConfig(((WindowConfig[])Enum.GetValues(typeof(WindowConfig)))[windowConfig - 1]);
                     }
 
-                    CurrentBufferIndex = currentWindowNumber - 1;
+                    SetCurrentWindow(currentWindowNumber - 1);
 
                     Console.WriteLine($"Window Number: {windowNumber}, CurrentWindow: {currentWindowNumber}, Flag1: {flag1}, Flag2: {flag2}");
 
@@ -291,7 +293,8 @@ namespace FressClient
 
             CommandBuffer = new Buffer(new Vector2i(65, 1)) {Position = new Vector2f(0, CharHeight)};
             ErrorBuffer = new Buffer(new Vector2i(65, 1)) {Position = new Vector2f(CharWidth * 65, CharHeight)};
-            SetWindowConfig(WindowConfig.Config_2B);
+            SetWindowConfig(WindowConfig.Config_1A);
+            SetCurrentWindow(0);
             CurrentBuffer.Append("This is a test string\nabout some text with\nmultiple lines");
 
             Buttons.Add(new Button("Test button"){ Position = new Vector2f(10, 60)});
