@@ -21,7 +21,7 @@ namespace FressClient
         public static Font Font;
         public static readonly uint FontSize = 14;
 
-        public Buffer CommandBuffer;
+        public Buffer CommandBuffer, ErrorBuffer;
         public Buffer[] Buffers;
         public Buffer CurrentBuffer => Buffers[CurrentBufferIndex];
         public int CurrentBufferIndex;
@@ -220,11 +220,9 @@ namespace FressClient
                             //Console.WriteLine($"Data: {text}");
                             if (text.Any())
                             {
-                                CommandBuffer.BufferText = text.Replace("\r", "");
+                                ErrorBuffer.BufferText = text.Replace("\r", "");
                             }
                         }
-
-                        DisplayingSpecialMessage = true;
                     }
                     else if (!flag1.HasFlag(Flag1.TxBinaryData))
                     {
@@ -242,8 +240,6 @@ namespace FressClient
                 }
             }
         }
-
-        public bool DisplayingSpecialMessage { get; set; }
 
         public Scripting Scripting;
         private void SubmitCommand(string command)
@@ -273,12 +269,13 @@ namespace FressClient
             CharWidth = Font.GetGlyph('a', FontSize, false, 0).Bounds.Width;
             CharHeight = Font.GetLineSpacing(FontSize);
 
-            RenderWindow window = new RenderWindow(new VideoMode((uint) (CharWidth * 66 * 2), (uint) (CharHeight * 41)), "FRESS");
+            RenderWindow window = new RenderWindow(new VideoMode((uint) (CharWidth * 66 * 2), (uint) (CharHeight * 42)), "FRESS");
             window.KeyPressed += WindowOnKeyPressed;
             window.TextEntered += Window_TextEntered;
             window.Closed += WindowOnClosed;
 
-            CommandBuffer = new Buffer(new Vector2i(130, 1)) {Position = new Vector2f(0, CharHeight * 40)};
+            CommandBuffer = new Buffer(new Vector2i(65, 1)) {Position = new Vector2f(0, CharHeight * 40)};
+            ErrorBuffer = new Buffer(new Vector2i(65, 1)) {Position = new Vector2f(CharWidth * 65, CharHeight * 40)};
             SetWindowConfig(WindowConfig.Config_2B);
 
             string ip = args[0];
@@ -330,6 +327,7 @@ namespace FressClient
                 }
 
                 window.Draw(CommandBuffer);
+                window.Draw(ErrorBuffer);
 
                 window.Display();
             }
@@ -352,20 +350,18 @@ namespace FressClient
 
         private void Window_TextEntered(object sender, TextEventArgs e)
         {
+            ErrorBuffer.BufferText = "";
             if (e.Unicode == "\r")
             {
-                SubmitCommand(CommandBuffer.BufferText);
+                var command = CommandBuffer.BufferText;
                 CommandBuffer.BufferText = "";
+                SubmitCommand(command);
             }
             else
             {
-                if (DisplayingSpecialMessage)
-                {
-                    CommandBuffer.BufferText = "";
-                    DisplayingSpecialMessage = false;
-                }
                 CommandBuffer.HandleText(e);
             }
+
         }
 
         private void WindowOnClosed(object sender, EventArgs eventArgs)

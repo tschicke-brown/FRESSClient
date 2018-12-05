@@ -9,6 +9,7 @@ namespace FressClient
     {
         private readonly Text _drawableText;
         private RectangleShape _cursor;
+        private RectangleShape _border;
         private int _cursorIndex;
 
         public Vector2i CharacterSize { get; set; }
@@ -34,6 +35,7 @@ namespace FressClient
         {
             _drawableText = new Text(BufferText, Program.Font, Program.FontSize);
             _cursor = new RectangleShape() { FillColor = new Color(Color.White) };
+            _border = new RectangleShape() {FillColor = new Color(0, 0, 0, 0), OutlineColor = new Color(0x7f, 0x7f, 0x7f)};
             CharacterSize = characterSize;
         }
 
@@ -92,6 +94,9 @@ namespace FressClient
 
             _cursor.Position = new Vector2f(cursorPos.Value.X, cursorPos.Value.Y + 1);
             target.Draw(_cursor, states);
+
+            _border.Size = new Vector2f(CharacterSize.X * Program.CharWidth, CharacterSize.Y * Program.CharHeight);
+            target.Draw(_border, states);
         }
 
         private Vector2f? DrawString(string s, RenderTarget target, RenderStates states, Vector2f position, int cursorPos)
