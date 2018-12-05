@@ -217,7 +217,7 @@ namespace FressClient
                     if (flag1.HasFlag(Flag1.TxWindowDimensions))
                     {
                         int windowConfig = content[5] - '0';
-                        SetWindowConfig(((WindowConfig[])Enum.GetValues(typeof(WindowConfig)))[windowConfig - 1]);
+                        SetWindowConfig(((WindowConfig[])Enum.GetValues(typeof(WindowConfig)))[windowConfig]);
                     }
 
                     SetCurrentWindow(currentWindowNumber - 1);
@@ -269,6 +269,98 @@ namespace FressClient
             }
         }
 
+        private Button AddButton(string name, string command)
+        {
+            var button = new Button(name);
+            button.Tapped += b => CommandBuffer.Append(command);
+            return button;
+        }
+
+        private void AddButtons()
+        {
+            var patterns = new[]
+            {
+                ("Left end defer", "="),
+                ("Right end defer", "=?"),
+                ("Resolve deferred", "?/"),
+                ("Choose word", "-W"),
+                ("Choose line", "-L"),
+                ("Choose order", "-O"),
+            };
+
+            var editing = new[]
+            {
+                ("Delete text", "d"),
+                ("Insert text", "i"),
+                ("Insert annotation", "ia"),
+                ("Move text", "m"),
+                ("Move from workspace", "mws"),
+                ("Move to label", "mt"),
+                ("Revert", "rev"),
+            };
+
+            var viewing = new[]
+            {
+                ("Change window", "cw/"),
+                ("Display space", "ds/"),
+                ("Display viewspecs", "dv/"),
+                ("Set viewspaces", "sv/"),
+                ("Set keyword display request", "skd/"),
+                ("Query all files", "q/f"),
+            };
+
+            var structure = new[]
+            {
+                ("Block trail continuous", "bt/"),
+                ("Block trail discrete", "btd/"),
+                ("Insert block", "ib"),
+                ("Insert decimal block", "idb"),
+                ("Make decimal block", "mdb"),
+                ("Make decimal reference", "mdr"),
+                ("Insert Annotation", "ia"),
+                ("Make annotation", "ma"),
+                ("Refer to annotation", "rta"),
+                ("Make jump", "mj"),
+                ("Make label", "ml"),
+                ("Make splice", "ms"),
+                ("Split editing area", "sa"),
+            };
+
+            var navigation = new[]
+            {
+                ("Jump", "j"),
+                ("Locate", "l"),
+                ("Get label", "gl"),
+                ("Get decimal label", "gdl"),
+                ("Return", "r"),
+                ("Ring forwards", "r/f"),
+                ("Ring backwards", "r/b"),
+                ("Trail forwards", "tr/f"),
+                ("Trail backwards", "tr/b"),
+            };
+
+            var menus = new[]
+            {
+                ("Pattern", patterns),
+                ("Editing", editing),
+                ("Viewing", viewing),
+                ("Structure", structure),
+                ("Navigation", navigation),
+            };
+
+            var yOff = 0;
+            foreach (var menu in menus)
+            {
+                foreach (var menuItem in menu.Item2)
+                {
+                    var button = AddButton(menuItem.Item1, menuItem.Item2);
+                    yOff += 12;
+                    button.Position = new Vector2f(20, yOff);
+                    Buttons.Add(button);
+                }
+            }
+        }
+
         private void Run(string[] args)
         {
             if (args.Length < 2)
@@ -295,12 +387,8 @@ namespace FressClient
             ErrorBuffer = new Buffer(new Vector2i(65, 1)) {Position = new Vector2f(CharWidth * 65, CharHeight)};
             SetWindowConfig(WindowConfig.Config_1A);
             SetCurrentWindow(0);
-            CurrentBuffer.Append("This is a test string\nabout some text with\nmultiple lines");
 
-            Buttons.Add(new Button("Test button"){ Position = new Vector2f(10, 60)});
-            Buttons.Add(new Button("Open stuff"){Position = new Vector2f(10, 120)});
-            Buttons.Add(new Button("Close stuff"){Position = new Vector2f(10, 180)});
-            Buttons.Add(new Button("Do some other stuff"){Position = new Vector2f(10, 240)});
+            AddButtons();
 
             string ip = args[0];
             int port = int.Parse(args[1]);

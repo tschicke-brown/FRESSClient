@@ -13,7 +13,7 @@ namespace FressClient
         public Button(string text)
         {
             Text = text;
-            _renderableText = new Text(text, Program.Font){FillColor = new Color(0, 0, 0)};
+            _renderableText = new Text(text, Program.Font, Program.FontSize){FillColor = new Color(0, 0, 0)};
             _rectangleShape = new RectangleShape(new Vector2f(200, 100)){FillColor = new Color(0xa0, 0xa0, 0xa0)};
         }
 
@@ -24,9 +24,9 @@ namespace FressClient
             states.Transform.Combine(Transform);
             _renderableText.DisplayedString = Text;
             var textBounds = _renderableText.GetLocalBounds();
-            _rectangleShape.Size = new Vector2f(textBounds.Width + 30, textBounds.Height + 30);
+            _rectangleShape.Size = new Vector2f(textBounds.Width + 30, textBounds.Height + 10);
             target.Draw(_rectangleShape, states);
-            _renderableText.Position = new Vector2f(15, 15);
+            _renderableText.Position = new Vector2f(15, 5);
             target.Draw(_renderableText, states);
         }
 
