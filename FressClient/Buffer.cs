@@ -35,7 +35,7 @@ namespace FressClient
         {
             _drawableText = new Text(BufferText, Program.Font, Program.FontSize);
             _cursor = new RectangleShape() { FillColor = new Color(Color.White) };
-            _border = new RectangleShape() {FillColor = new Color(0, 0, 0, 0), OutlineColor = new Color(0x7f, 0x7f, 0x7f)};
+            _border = new RectangleShape() {FillColor = new Color(0, 0, 0, 0), OutlineColor = new Color(0x7f, 0x7f, 0x7f), OutlineThickness = 1};
             CharacterSize = characterSize;
         }
 
