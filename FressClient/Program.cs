@@ -22,6 +22,7 @@ namespace FressClient
 
         public static Font Font;
         public static readonly uint FontSize = 18;
+        public static readonly uint MenuFontSize = 16;
 
         public Buffer CommandBuffer, ErrorBuffer;
         public Buffer[] Buffers;
@@ -271,7 +272,7 @@ namespace FressClient
 
         private Button AddButton(string name, string command)
         {
-            var button = new Button(name);
+            var button = new Button(name) {Size = new Vector2f(220, 25)};
             button.Tapped += b => CommandBuffer.Append(command);
             return button;
         }
@@ -348,16 +349,19 @@ namespace FressClient
                 ("Navigation", navigation),
             };
 
-            var yOff = 0;
+            var xOff = 20;
             foreach (var menu in menus)
             {
+                var yOff = 20;
                 foreach (var menuItem in menu.Item2)
                 {
                     var button = AddButton(menuItem.Item1, menuItem.Item2);
-                    yOff += 12;
-                    button.Position = new Vector2f(20, yOff);
+                    button.Position = new Vector2f(xOff, yOff);
+                    yOff += 30;
                     Buttons.Add(button);
                 }
+
+                xOff += 250;
             }
         }
 
@@ -380,7 +384,7 @@ namespace FressClient
             window.MouseButtonReleased += Window_MouseButtonReleased;
             window.Closed += WindowOnClosed;
 
-            RenderWindow commandWindow = new RenderWindow(new VideoMode(400, 700), "Commands");
+            RenderWindow commandWindow = new RenderWindow(new VideoMode(1300, 450), "Commands");
             commandWindow.MouseButtonReleased += CommandWindowOnMouseButtonReleased;
 
             CommandBuffer = new Buffer(new Vector2i(65, 1)) {Position = new Vector2f(0, CharHeight)};
