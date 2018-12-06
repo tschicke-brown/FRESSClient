@@ -273,7 +273,11 @@ namespace FressClient
         private Button AddButton(string name, string command)
         {
             var button = new Button(name) {Size = new Vector2f(220, 25)};
-            button.Tapped += b => CommandBuffer.Append(command);
+            button.Tapped += b =>
+            {
+                CommandBuffer.Append(command);
+                MainWindow.RequestFocus();
+            };
             return button;
         }
 
@@ -365,6 +369,8 @@ namespace FressClient
             }
         }
 
+        private RenderWindow MainWindow { get; set; }
+
         private void Run(string[] args)
         {
             if (args.Length < 2)
@@ -378,7 +384,8 @@ namespace FressClient
             CharWidth = Font.GetGlyph('a', FontSize, false, 0).Advance;
             CharHeight = Font.GetLineSpacing(FontSize);
 
-            RenderWindow window = new RenderWindow(new VideoMode((uint) (CharWidth * 65 * 2), (uint) (CharHeight * 43)), "FRESS");
+            MainWindow = new RenderWindow(new VideoMode((uint) (CharWidth * 65 * 2), (uint) (CharHeight * 43)), "FRESS");
+            var window = MainWindow;
             window.KeyPressed += WindowOnKeyPressed;
             window.TextEntered += Window_TextEntered;
             window.MouseButtonReleased += Window_MouseButtonReleased;
@@ -387,7 +394,7 @@ namespace FressClient
             RenderWindow commandWindow = new RenderWindow(new VideoMode(1300, 450), "Commands");
             commandWindow.MouseButtonReleased += CommandWindowOnMouseButtonReleased;
 
-            CommandBuffer = new Buffer(new Vector2i(65, 1)) {Position = new Vector2f(0, CharHeight)};
+            CommandBuffer = new Buffer(new Vector2i(65, 1)) {Position = new Vector2f(0, CharHeight), DisplayCursor = true};
             ErrorBuffer = new Buffer(new Vector2i(65, 1)) {Position = new Vector2f(CharWidth * 65, CharHeight)};
             SetWindowConfig(WindowConfig.Config_1A);
             SetCurrentWindow(0);

@@ -2,6 +2,7 @@
 using SFML.System;
 using SFML.Window;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace FressClient
@@ -12,6 +13,9 @@ namespace FressClient
         private RectangleShape _cursor;
         private RectangleShape _border;
         private int _cursorIndex;
+        private string _bufferText = "";
+
+        public bool DisplayCursor { get; set; } = false;
 
         public Vector2i CharacterSize { get; set; }
 
@@ -35,13 +39,11 @@ namespace FressClient
             }
         }
 
-        private string _bufferText = "";
-
         public Buffer(Vector2i characterSize)
         {
             _drawableText = new Text(BufferText, Program.Font, Program.FontSize);
             _cursor = new RectangleShape() { FillColor = new Color(Color.White) };
-            _border = new RectangleShape() {FillColor = new Color(0, 0, 0, 0), OutlineColor = new Color(0x7f, 0x7f, 0x7f), OutlineThickness = 1};
+            _border = new RectangleShape() { FillColor = new Color(0, 0, 0, 0), OutlineColor = new Color(0x7f, 0x7f, 0x7f), OutlineThickness = 1 };
             CharacterSize = characterSize;
         }
 
@@ -51,11 +53,11 @@ namespace FressClient
             set
             {
                 _bufferText = value;
-                _cursorIndex = _bufferText.Length;
+                _cursorIndex = Math.Min(_cursorIndex, _bufferText.Length);
             }
         }
 
-        public event Action<string> TextClicked; 
+        public event Action<string> TextClicked;
 
         public void Draw(RenderTarget target, RenderStates states)
         {
@@ -70,6 +72,7 @@ namespace FressClient
             Vector2f? cursorPos = null;
             Vector2f currentPosition = new Vector2f(0, 0);
             int linesDrawn = 0;
+            Text.Styles style = 0;
             foreach (string line in lines)
             {
                 if (linesDrawn++ >= CharacterSize.Y)
@@ -78,19 +81,20 @@ namespace FressClient
                 }
                 string drawable = line;
                 Vector2f? pos;
+                int charsDrawn;
                 while (drawable.Length > CharacterSize.X)
                 {
                     string l = drawable.Substring(0, CharacterSize.X);
                     drawable = drawable.Substring(CharacterSize.X);
-                    pos = DrawString(l, target, states, currentPosition, cursorIndex);
+                    (pos, style, charsDrawn) = DrawString(l, target, states, style, currentPosition, cursorIndex);
                     cursorPos = cursorPos ?? pos;
-                    cursorIndex -= l.Length;
+                    cursorIndex -= charsDrawn;
                     currentPosition.Y += height;
                 }
 
-                pos = DrawString(drawable, target, states, currentPosition, cursorIndex);
+                (pos, style, charsDrawn) = DrawString(drawable, target, states, style, currentPosition, cursorIndex);
                 cursorPos = cursorPos ?? pos;
-                cursorIndex -= drawable.Length + 1;
+                cursorIndex -= charsDrawn + 1;// +1 for new line
                 currentPosition.Y += height;
             }
 
@@ -100,25 +104,99 @@ namespace FressClient
                 cursorPos = new Vector2f(p.X, currentPosition.Y - height);
             }
 
-            _cursor.Position = new Vector2f(cursorPos.Value.X, cursorPos.Value.Y + 1);
-            target.Draw(_cursor, states);
+            if (DisplayCursor)
+            {
+                _cursor.Position = new Vector2f(cursorPos.Value.X, cursorPos.Value.Y + 1);
+                target.Draw(_cursor, states);
+            }
 
             _border.Size = new Vector2f(CharacterSize.X * Program.CharWidth, CharacterSize.Y * Program.CharHeight);
             target.Draw(_border, states);
         }
 
-        private Vector2f? DrawString(string s, RenderTarget target, RenderStates states, Vector2f position, int cursorPos)
+        private (Vector2f?, Text.Styles, int) DrawString(string s, RenderTarget target, RenderStates states, Text.Styles style, Vector2f position, int cursorPos)
         {
-            _drawableText.DisplayedString = s;
-            _drawableText.Position = position;
-            target.Draw(_drawableText, states);
-            if (cursorPos <= s.Length && cursorPos >= 0)
+            List<(string, Text.Styles)> SplitString(string str, Text.Styles initialStyle)
             {
-                Vector2f characterPos = _drawableText.FindCharacterPos((uint) cursorPos);
-                return new Vector2f(characterPos.X, position.Y);
+                //return new List<(string, Text.Styles)>{(str, 0)};
+                List<(string, Text.Styles)> strings = new List<(string, Text.Styles)>();
+                int openIndex = -2, closeIndex = -2;
+                int start = 0;
+                for (int i = 0; i < str.Length;)
+                {
+                    if (openIndex == -2)
+                    {
+                        openIndex = str.IndexOf("!(1", i);
+                    }
+
+                    if (closeIndex == -2)
+                    {
+                        closeIndex = str.IndexOf("!)", i);
+                    }
+
+                    if (i == openIndex)
+                    {
+                        if (start != i)
+                        {
+                            string segment = str.Substring(start, i - start);
+                            strings.Add((segment, initialStyle));
+                        }
+                        initialStyle = Text.Styles.Italic;
+
+                        i += 3;
+                        start = i;
+                        continue;
+                    }
+
+                    if (i == closeIndex)
+                    {
+                        if (start != i)
+                        {
+                            string segment = str.Substring(start, i - start);
+                            strings.Add((segment, initialStyle));
+                        }
+                        initialStyle = 0;
+                        i += 2;
+                        start = i;
+                        continue;
+                    }
+
+                    ++i;
+                }
+
+                if (start != str.Length)
+                {
+                    string segment = str.Substring(start);
+                    strings.Add((segment, initialStyle));
+                }
+
+                return strings;
             }
 
-            return null;
+            List<(string, Text.Styles)> splits = SplitString(s, style);
+            Vector2f? characterPos = null;
+            int count = 0;
+            foreach ((string subStr, Text.Styles subStyle) in splits)
+            {
+
+                _drawableText.DisplayedString = subStr;
+                _drawableText.CharacterSize = style == Text.Styles.Bold ? Program.FontSize - 2 : Program.FontSize;
+                _drawableText.Position = position;
+                _drawableText.Style = subStyle;
+                target.Draw(_drawableText, states);
+                if (cursorPos <= subStr.Length && cursorPos >= 0)
+                {
+                    characterPos = _drawableText.FindCharacterPos((uint)cursorPos);
+                    characterPos = new Vector2f(characterPos.Value.X, position.Y);
+                }
+
+                position.X += _drawableText.GetLocalBounds().Width;
+                count += subStr.Length;
+                cursorPos -= subStr.Length;
+            }
+
+
+            return (characterPos, style, count);
         }
 
         public void HandleText(TextEventArgs args)
@@ -140,8 +218,8 @@ namespace FressClient
             string str = BufferText;
             if (str.Length > 0 && _cursorIndex > 0)
             {
-                _bufferText = str.Remove(_cursorIndex - 1, 1);
                 CursorLeft();
+                BufferText = str.Remove(_cursorIndex, 1);
             }
         }
 
@@ -168,7 +246,7 @@ namespace FressClient
 
         public void HandleMouse(float x, float y)
         {
-            var rect = new FloatRect(Position, new Vector2f(Program.CharWidth, Program.CharHeight));
+            FloatRect rect = new FloatRect(Position, new Vector2f(Program.CharWidth, Program.CharHeight));
             int col = 0;
             for (int i = 0; i < BufferText.Length; ++i)
             {
@@ -177,14 +255,14 @@ namespace FressClient
                     col = 0;
                     rect.Left = Position.X;
                     rect.Top += rect.Height;
-                    if(BufferText[i] == '\n') continue;
+                    if (BufferText[i] == '\n') continue;
                 }
 
                 if (rect.Contains(x, y))
                 {
-                    var end = Math.Min(BufferText.Length, i + 3);
-                    var start = end - 3;
-                    var str = BufferText.Substring(start, 3);
+                    int end = Math.Min(BufferText.Length, i + 3);
+                    int start = end - 3;
+                    string str = BufferText.Substring(start, 3);
                     OnTextClicked(str);
                 }
 
