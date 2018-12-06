@@ -173,16 +173,35 @@ namespace FressClient
                     return;
             }
 
-            foreach (var buffer in Buffers)
+            for (var index = 0; index < Buffers.Length; index++)
             {
+                var buffer = Buffers[index];
                 var bufferPosition = buffer.Position;
                 bufferPosition.Y += 2 * CharHeight;
                 buffer.Position = bufferPosition;
+                int i = index;
+                buffer.TextClicked += (s, button) => BufferOnTextClicked(s, button, i);
             }
 
             CurrentBufferIndex = 0;
 
             CurrentConfig = config;
+        }
+
+        private void BufferOnTextClicked(string s, Mouse.Button button, int windowNumber)
+        {
+            if (windowNumber != CurrentBufferIndex)
+            {
+                SubmitCommand("sw " + (windowNumber + 1));
+            }
+            if (button == Mouse.Button.Left)
+            {
+                CommandBuffer.Append("/" + s);
+            } else if (button == Mouse.Button.Right)
+            {
+                SubmitCommand("j/" + s);
+            }
+            
         }
 
         public void SetWindowConfig(string config)
@@ -394,13 +413,15 @@ namespace FressClient
             var window = MainWindow;
             window.KeyPressed += WindowOnKeyPressed;
             window.TextEntered += Window_TextEntered;
+            window.MouseButtonPressed += WindowOnMouseButtonPressed;
             window.MouseButtonReleased += Window_MouseButtonReleased;
+            window.MouseWheelScrolled += Window_MouseWheelScrolled;
             window.Closed += WindowOnClosed;
 
             RenderWindow commandWindow = new RenderWindow(new VideoMode(1300, 450), "Commands");
             commandWindow.MouseButtonReleased += CommandWindowOnMouseButtonReleased;
 
-            CommandBuffer = new Buffer(new Vector2i(65, 1)) {Position = new Vector2f(0, CharHeight), DisplayCursor = true};
+            CommandBuffer = new Buffer(new Vector2i(65, 1)) {Position = new Vector2f(0, CharHeight), DisplayCursor = true, DisableFormatting = true};
             ErrorBuffer = new Buffer(new Vector2i(65, 1)) {Position = new Vector2f(CharWidth * 65, CharHeight)};
             SetWindowConfig(WindowConfig.Config_1A);
             SetCurrentWindow(0);
@@ -470,6 +491,22 @@ namespace FressClient
             }
         }
 
+        private void Window_MouseWheelScrolled(object sender, MouseWheelScrollEventArgs e)
+        {
+            for (var index = 0; index < Buffers.Length; index++)
+            {
+                var buffer = Buffers[index];
+                var bounds = new FloatRect(buffer.Position,
+                    new Vector2f(buffer.CharacterSize.X * CharWidth, buffer.CharacterSize.Y * CharHeight));
+                if (bounds.Contains(e.X, e.Y))
+                {
+                    SubmitCommand("cw " + (index + 1));
+                    SubmitCommand((-e.Delta * 6).ToString());
+                    break;
+                }
+            }
+        }
+
         private void CommandWindowOnMouseButtonReleased(object sender, MouseButtonEventArgs mouseButtonEventArgs)
         {
             if (mouseButtonEventArgs.Button != Mouse.Button.Left)
@@ -485,20 +522,46 @@ namespace FressClient
             }
         }
 
-        private void Window_MouseButtonReleased(object sender, MouseButtonEventArgs e)
+        private void WindowOnMouseButtonPressed(object sender, MouseButtonEventArgs e)
         {
-            if (e.Button != Mouse.Button.Left)
+            for (var index = 0; index < Buffers.Length; index++)
             {
-                return;
-            }
-            foreach (var buffer in Buffers)
-            {
-                var bounds = new FloatRect(buffer.Position, new Vector2f(buffer.CharacterSize.X * CharWidth, buffer.CharacterSize.Y * CharHeight));
+                var buffer = Buffers[index];
+                var bounds = new FloatRect(buffer.Position,
+                    new Vector2f(buffer.CharacterSize.X * CharWidth, buffer.CharacterSize.Y * CharHeight));
                 if (bounds.Contains(e.X, e.Y))
                 {
-                    buffer.HandleMouse(e.X, e.Y);
+                    if (e.Button == Mouse.Button.Left || e.Button == Mouse.Button.Right)
+                    {
+                        buffer.HandleMouse(e.X, e.Y, true, e.Button);
+                    }
+
                     break;
                 }
+            }
+        }
+
+        private void Window_MouseButtonReleased(object sender, MouseButtonEventArgs e)
+        {
+            for (var index = 0; index < Buffers.Length; index++)
+            {
+                var buffer = Buffers[index];
+                var bounds = new FloatRect(buffer.Position,
+                    new Vector2f(buffer.CharacterSize.X * CharWidth, buffer.CharacterSize.Y * CharHeight));
+                if (bounds.Contains(e.X, e.Y))
+                {
+                    if (e.Button == Mouse.Button.Left || e.Button == Mouse.Button.Right)
+                    {
+                        buffer.HandleMouse(e.X, e.Y, false, e.Button);
+                    }
+                    else if (e.Button == Mouse.Button.Middle)
+                    {
+                        SubmitCommand("cw " + (index + 1));
+                    }
+
+                    break;
+                }
+                buffer.MouseReleased();
             }
         }
 

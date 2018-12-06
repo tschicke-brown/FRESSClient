@@ -4,6 +4,7 @@ using SFML.Window;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace FressClient
 {
@@ -16,6 +17,8 @@ namespace FressClient
         private string _bufferText = "";
 
         public bool DisplayCursor { get; set; } = false;
+
+        public bool DisableFormatting { get; set; } = false;
 
         public Vector2i CharacterSize { get; set; }
 
@@ -57,7 +60,7 @@ namespace FressClient
             }
         }
 
-        public event Action<string> TextClicked;
+        public event Action<string, Mouse.Button> TextClicked;
 
         public void Draw(RenderTarget target, RenderStates states)
         {
@@ -65,7 +68,7 @@ namespace FressClient
             FloatRect size = _drawableText.Font.GetGlyph('a', _drawableText.CharacterSize, false, 0).Bounds;
             float height = _drawableText.Font.GetLineSpacing(_drawableText.CharacterSize);
             _cursor.Size = new Vector2f(size.Width, height - 1);
-
+            _drawableText.DisplayedString = "";
 
             int cursorIndex = _cursorIndex;
             string[] lines = BufferText.Split("\n");
@@ -118,7 +121,11 @@ namespace FressClient
         {
             List<(string, Text.Styles)> SplitString(string str, Text.Styles initialStyle)
             {
-                //return new List<(string, Text.Styles)>{(str, 0)};
+                if (DisableFormatting)
+                {
+                    return new List<(string, Text.Styles)> { (str, 0) };
+                }
+
                 List<(string, Text.Styles)> strings = new List<(string, Text.Styles)>();
                 int openIndex = -2, closeIndex = -2;
                 int start = 0;
@@ -244,7 +251,8 @@ namespace FressClient
             GoToEnd();
         }
 
-        public void HandleMouse(float x, float y)
+        private int StartIndex = -1, EndIndex = -1;
+        public void HandleMouse(float x, float y, bool pressed, Mouse.Button button)
         {
             FloatRect rect = new FloatRect(Position, new Vector2f(Program.CharWidth, Program.CharHeight));
             int col = 0;
@@ -260,10 +268,15 @@ namespace FressClient
 
                 if (rect.Contains(x, y))
                 {
-                    int end = Math.Min(BufferText.Length, i + 3);
-                    int start = end - 3;
-                    string str = BufferText.Substring(start, 3);
-                    OnTextClicked(str);
+                    if (pressed)
+                    {
+                        StartIndex = i;
+                    }
+                    else
+                    {
+                        EndIndex = i;
+                        SendText(button);
+                    }
                 }
 
                 col++;
@@ -271,10 +284,47 @@ namespace FressClient
             }
         }
 
-        protected virtual void OnTextClicked(string str)
+        public void MouseReleased()
         {
+            StartIndex = -1;
+            EndIndex = -1;
+        }
+
+        private static Regex r = new Regex( @"\.\.\.\.*");
+        protected virtual void SendText(Mouse.Button button)
+        {
+            if (StartIndex == -1 || EndIndex == -1)
+            {
+                return;
+            }
+
+            int startI = Math.Min(StartIndex, EndIndex);
+            int endI = Math.Max(StartIndex, EndIndex);
+            const int numChars = 15;
+            string str;
+            if (StartIndex == EndIndex)
+            {
+                int end = Math.Min(BufferText.Length, startI + numChars);
+                int start = end - numChars;
+                str = BufferText.Substring(start, numChars);
+            }
+            else if (endI + 1 - startI < numChars)
+            {
+                int diff = endI + 1 - startI;
+                str = BufferText.Substring(startI, diff);
+            }
+            else
+            {
+                string startString = BufferText.Substring(startI, numChars);
+                int end = Math.Min(BufferText.Length, endI + numChars);
+                int start = end - numChars;
+                string endString = BufferText.Substring(start, numChars);
+                startString = r.Replace(startString, match => match.Value + ".");
+                endString = r.Replace(endString, match => match.Value + ".");
+                str = $"{startString}...{endString}";
+            }
             Debug.WriteLine(str);
-            TextClicked?.Invoke(str);
+            TextClicked?.Invoke(str, button);
         }
     }
 }
