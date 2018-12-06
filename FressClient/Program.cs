@@ -29,7 +29,7 @@ namespace FressClient
         public Buffer CurrentBuffer => Buffers[CurrentBufferIndex];
         public int CurrentBufferIndex;
 
-        public List<Button> Buttons = new List<Button>();
+        public List<Drawable> Buttons = new List<Drawable>();
 
         public WindowConfig CurrentConfig = WindowConfig.None;
 
@@ -346,22 +346,28 @@ namespace FressClient
 
             var menus = new[]
             {
-                ("Pattern", patterns),
+                ("Navigation", navigation),
                 ("Editing", editing),
+                ("Pattern", patterns),
                 ("Viewing", viewing),
                 ("Structure", structure),
-                ("Navigation", navigation),
             };
 
             var xOff = 20;
             foreach (var menu in menus)
             {
                 var yOff = 20;
+                var header = new Text(menu.Item1, Font, MenuFontSize)
+                {
+                    Position = new Vector2f(xOff, yOff),
+                    FillColor = new Color(0, 0, 0)
+                };
+                Buttons.Add(header);
                 foreach (var menuItem in menu.Item2)
                 {
+                    yOff += 30;
                     var button = AddButton(menuItem.Item1, menuItem.Item2);
                     button.Position = new Vector2f(xOff, yOff);
-                    yOff += 30;
                     Buttons.Add(button);
                 }
 
@@ -472,7 +478,10 @@ namespace FressClient
             }
             foreach (var button in Buttons)
             {
-                button.TestTapped(mouseButtonEventArgs.X, mouseButtonEventArgs.Y);
+                if (button is Button b)
+                {
+                    b.TestTapped(mouseButtonEventArgs.X, mouseButtonEventArgs.Y);
+                }
             }
         }
 

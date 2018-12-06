@@ -18,5 +18,4 @@ C:\Users\Graphics Lab\Documents\Tyler\FressClient\FressClient\obj\Debug\netcorea
 C:\Users\Graphics Lab\Documents\Tyler\FressClient\FressClient\obj\Debug\netcoreapp2.1\FressClient.csproj.CopyComplete
 C:\Users\Graphics Lab\Documents\Tyler\FressClient\FressClient\obj\Debug\netcoreapp2.1\FressClient.dll
 C:\Users\Graphics Lab\Documents\Tyler\FressClient\FressClient\obj\Debug\netcoreapp2.1\FressClient.pdb
-C:\Users\Graphics Lab\Documents\Tyler\FressClient\FressClient\obj\Debug\netcoreapp2.1\FressClient.csprojAssemblyReference.cache
 C:\Users\Graphics Lab\Documents\Tyler\FressClient\FressClient\bin\Debug\netcoreapp2.1\resources\Inconsolata-Regular.ttf

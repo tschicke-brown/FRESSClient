@@ -1,0 +1,9 @@
+{
+  "runtimeOptions": {
+    "additionalProbingPaths": [
+      "C:\\Users\\Graphics Lab\\.dotnet\\store\\|arch|\\|tfm|",
+      "C:\\Users\\Graphics Lab\\.nuget",
+      "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
+    ]
+  }
+}
