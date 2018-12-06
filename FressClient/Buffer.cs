@@ -4,6 +4,7 @@ using SFML.Window;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text.RegularExpressions;
 
 namespace FressClient
@@ -15,6 +16,8 @@ namespace FressClient
         private RectangleShape _border;
         private int _cursorIndex;
         private string _bufferText = "";
+
+        private int _windowNumber;
 
         public bool DisplayCursor { get; set; } = false;
 
@@ -48,6 +51,11 @@ namespace FressClient
             _cursor = new RectangleShape() { FillColor = new Color(Color.White) };
             _border = new RectangleShape() { FillColor = new Color(0, 0, 0, 0), OutlineColor = new Color(0x7f, 0x7f, 0x7f), OutlineThickness = 1 };
             CharacterSize = characterSize;
+        }
+
+        public void SetWindowNumber(int windowNumber)
+        {
+            _windowNumber = windowNumber;
         }
 
         public string BufferText
@@ -298,30 +306,49 @@ namespace FressClient
                 return;
             }
 
+            string translation = "0123456789[]*_;\"";
+            string GetLP(int index)
+            {
+                var s = "`";
+                var temp = (uint) index;
+                for (int i = 0; i < 4; ++i)
+                {
+                    char c = translation[(int)(temp & 0xf)];
+                    s += c;
+                    temp >>= 4;
+                }
+
+                s += _windowNumber + 1;
+
+                return s;
+            }
+
             int startI = Math.Min(StartIndex, EndIndex);
             int endI = Math.Max(StartIndex, EndIndex);
             const int numChars = 15;
             string str;
             if (StartIndex == EndIndex)
             {
-                int end = Math.Min(BufferText.Length, startI + numChars);
-                int start = end - numChars;
-                str = BufferText.Substring(start, numChars);
+                //int end = Math.Min(BufferText.Length, startI + numChars);
+                //int start = end - numChars;
+                //str = BufferText.Substring(start, numChars);
+                str = GetLP(StartIndex);
             }
-            else if (endI + 1 - startI < numChars)
-            {
-                int diff = endI + 1 - startI;
-                str = BufferText.Substring(startI, diff);
-            }
+            //else if (endI + 1 - startI < numChars)
+            //{
+            //    int diff = endI + 1 - startI;
+            //    str = BufferText.Substring(startI, diff);
+            //}
             else
             {
-                string startString = BufferText.Substring(startI, numChars);
-                int end = Math.Min(BufferText.Length, endI + numChars);
-                int start = end - numChars;
-                string endString = BufferText.Substring(start, numChars);
-                startString = r.Replace(startString, match => match.Value + ".");
-                endString = r.Replace(endString, match => match.Value + ".");
-                str = $"{startString}...{endString}";
+                str = GetLP(StartIndex) + GetLP(EndIndex);
+                //string startString = BufferText.Substring(startI, numChars);
+                //int end = Math.Min(BufferText.Length, endI + numChars);
+                //int start = end - numChars;
+                //string endString = BufferText.Substring(start, numChars);
+                //startString = r.Replace(startString, match => match.Value + ".").Trim();
+                //endString = r.Replace(endString, match => match.Value + ".").Trim();
+                //str = $"{startString}...{endString}";
             }
             Debug.WriteLine(str);
             TextClicked?.Invoke(str, button);

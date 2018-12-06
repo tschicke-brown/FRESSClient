@@ -176,6 +176,7 @@ namespace FressClient
             for (var index = 0; index < Buffers.Length; index++)
             {
                 var buffer = Buffers[index];
+                buffer.SetWindowNumber(index);
                 var bufferPosition = buffer.Position;
                 bufferPosition.Y += 2 * CharHeight;
                 buffer.Position = bufferPosition;
@@ -190,10 +191,6 @@ namespace FressClient
 
         private void BufferOnTextClicked(string s, Mouse.Button button, int windowNumber)
         {
-            if (windowNumber != CurrentBufferIndex)
-            {
-                SubmitCommand("sw " + (windowNumber + 1));
-            }
             if (button == Mouse.Button.Left)
             {
                 CommandBuffer.Append("/" + s);
@@ -279,6 +276,7 @@ namespace FressClient
         {
             if (!string.IsNullOrWhiteSpace(command))
             {
+                Console.WriteLine($"Sent command: {command}");
                 Scripting.Send(command + "\r\n");
             }
 
@@ -354,9 +352,9 @@ namespace FressClient
             {
                 ("Jump", "j"),
                 ("Locate", "l"),
+                ("Return", "r"),
                 ("Get label", "gl"),
                 ("Get decimal label", "gdl"),
-                ("Return", "r"),
                 ("Ring forwards", "r/f"),
                 ("Ring backwards", "r/b"),
                 ("Trail forwards", "tr/f"),
@@ -400,7 +398,7 @@ namespace FressClient
         {
             if (args.Length < 2)
             {
-                Console.WriteLine("Not enough arguments");
+                Console.WriteLine("Not enough arguments. Needs ip and port");
                 Console.Read();
                 return;
             }
