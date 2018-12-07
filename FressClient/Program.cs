@@ -5,8 +5,10 @@ using SFML.System;
 using SFML.Window;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using Color = SFML.Graphics.Color;
 
 namespace FressClient
@@ -22,7 +24,7 @@ namespace FressClient
 
         public static Font Font;
         public static readonly uint FontSize = 18;
-        public static readonly uint MenuFontSize = 16;
+        public static readonly uint MenuFontSize = 14;
 
         public Buffer CommandBuffer, ErrorBuffer;
         public Buffer[] Buffers;
@@ -173,11 +175,11 @@ namespace FressClient
                     return;
             }
 
-            for (var index = 0; index < Buffers.Length; index++)
+            for (int index = 0; index < Buffers.Length; index++)
             {
-                var buffer = Buffers[index];
+                Buffer buffer = Buffers[index];
                 buffer.SetWindowNumber(index);
-                var bufferPosition = buffer.Position;
+                Vector2f bufferPosition = buffer.Position;
                 bufferPosition.Y += 2 * CharHeight;
                 buffer.Position = bufferPosition;
                 int i = index;
@@ -194,11 +196,12 @@ namespace FressClient
             if (button == Mouse.Button.Left)
             {
                 CommandBuffer.Append("/" + s);
-            } else if (button == Mouse.Button.Right)
+            }
+            else if (button == Mouse.Button.Right)
             {
                 SubmitCommand("j/" + s);
             }
-            
+
         }
 
         public void SetWindowConfig(string config)
@@ -219,68 +222,97 @@ namespace FressClient
             }
         }
 
+        private Regex _commandRegex = new Regex(@"\n  ?\\");
         private void ParseResponse(string res)
         {
-            string[] contents = res.Split('|');
-            foreach (string content in contents)
+            void HandleCommand(string command)
             {
-                if (content.StartsWith('\\')) //Command
+                (string, int) GetText(string commandString)
                 {
-                    int windowNumber = content[1] - '0';
-                    int currentWindowNumber = content[2] - '0';
-                    Flag1 flag1 = (Flag1)(content[3] - '0');
-                    Flag2 flag2 = (Flag2)(content[4] - '0');
+                    Match match = _commandRegex.Match(command);
+                    int nextCommand = match.Success ? match.Index : -1;
+                    return nextCommand != -1 ?
+                        (command.Substring(0, nextCommand), match.Length - 1) :
+                        (command, 0);
+                }
 
-                    if (flag1.HasFlag(Flag1.TxWindowDimensions))
+                while (!string.IsNullOrEmpty(command))
+                {
+                    if (command.StartsWith('\\')) //Command
                     {
-                        int windowConfig = content[5] - '0';
-                        SetWindowConfig(((WindowConfig[])Enum.GetValues(typeof(WindowConfig)))[windowConfig]);
-                    }
+                        int windowNumber = command[1] - '0';
+                        int currentWindowNumber = command[2] - '0';
+                        Flag1 flag1 = (Flag1)(command[3] - '0');
+                        Flag2 flag2 = (Flag2)(command[4] - '0');
+                        int charsUsed = 5;
 
-                    SetCurrentWindow(currentWindowNumber - 1);
-
-                    Console.WriteLine($"Window Number: {windowNumber}, CurrentWindow: {currentWindowNumber}, Flag1: {flag1}, Flag2: {flag2}");
-
-                    if (flag1.HasFlag(Flag1.TxSpecialMessage))
-                    {
-                        int space = content.IndexOf(' ');
-                        if (space >= 0)
+                        if (flag1.HasFlag(Flag1.TxWindowDimensions))
                         {
-                            string text = content.Substring(space + 1);
-                            //Console.WriteLine($"Data: {text}");
-                            if (text.Any())
+                            int windowConfig = command[5] - '0';
+                            SetWindowConfig(((WindowConfig[])Enum.GetValues(typeof(WindowConfig)))[windowConfig]);
+                            charsUsed = 7;
+                        }
+
+                        SetCurrentWindow(currentWindowNumber - 1);
+
+                        Console.WriteLine($"Window Number: {windowNumber}, CurrentWindow: {currentWindowNumber}, Flag1: {flag1}, Flag2: {flag2}");
+
+                        command = command.Substring(charsUsed);
+                        charsUsed = 0;
+                        if (flag1.HasFlag(Flag1.TxSpecialMessage))
+                        {
+                            var (text, junk) = GetText(command);
+                            if (text != null)
                             {
+                                Console.WriteLine($"Special Message: {text}");
                                 ErrorBuffer.BufferText = text.Replace("\r", "");
+                                charsUsed += text.Length + junk;
                             }
                         }
-                    }
-                    else if (!flag1.HasFlag(Flag1.TxBinaryData))
-                    {
-                        int space = content.IndexOf(' ');
-                        if (space >= 0)
+                        else if (!flag1.HasFlag(Flag1.TxBinaryData) && command.Any() && command[0] != '\\')
                         {
-                            string text = content.Substring(space + 1);
-                            //Console.WriteLine($"Data: {text}");
-                            if (text.Any())
+                            var (text, junk) = GetText(command);
+                            if (text != null)
                             {
+                                //Console.WriteLine($"Data: {text}");
                                 Buffers[windowNumber - 1].BufferText = text.Replace("\r", "");
+                                charsUsed += text.Length + junk;
                             }
                         }
+
+                        command = command.Substring(charsUsed);
+                    }
+                    else
+                    {
+                        return;
                     }
                 }
             }
+            string[] contents = res.Split('|');
+            foreach (string content in contents)
+            {
+                HandleCommand(content);
+            }
         }
 
-        public Scripting Scripting;
+        //public Scripting Scripting;
+        public TelnetSocket Socket;
         private void SubmitCommand(string command)
         {
-            if (!string.IsNullOrWhiteSpace(command))
-            {
-                Console.WriteLine($"Sent command: {command}");
-                Scripting.Send(command + "\r\n");
-            }
+            Console.WriteLine($"Sent command: {command}");
+            //Scripting.Send(command + "\r\n");
+            Socket.Write(command + "\r\n");
 
-            string res = Scripting.ReadUntil(ScriptEvent.Timeout);
+            //string res = Scripting.ReadUntil(ScriptEvent.Timeout);
+            //if (res != null)
+            //{
+            //    ParseResponse(res);
+            //}
+        }
+
+        private void OnDataAvailable()
+        {
+            string res = Socket.Read();
             if (res != null)
             {
                 ParseResponse(res);
@@ -289,7 +321,7 @@ namespace FressClient
 
         private Button AddButton(string name, string command)
         {
-            var button = new Button(name) {Size = new Vector2f(220, 25)};
+            Button button = new Button(name) {Size = new Vector2f(170, 15)};
             button.Tapped += b =>
             {
                 CommandBuffer.Append(command);
@@ -327,7 +359,7 @@ namespace FressClient
                 ("Display space", "ds/"),
                 ("Display viewspecs", "dv/"),
                 ("Set viewspaces", "sv/"),
-                ("Set keyword display request", "skd/"),
+                ("Set keyword display rqst", "skd/"),
                 ("Query all files", "q/f"),
             };
 
@@ -340,6 +372,8 @@ namespace FressClient
                 ("Make decimal block", "mdb"),
                 ("Make decimal reference", "mdr"),
                 ("Insert Annotation", "ia"),
+            };
+            var structure2 = new []{
                 ("Make annotation", "ma"),
                 ("Refer to annotation", "rta"),
                 ("Make jump", "mj"),
@@ -361,34 +395,35 @@ namespace FressClient
                 ("Trail backwards", "tr/b"),
             };
 
-            var menus = new[]
+            (string, (string, string)[])[] menus = new[]
             {
                 ("Navigation", navigation),
                 ("Editing", editing),
                 ("Pattern", patterns),
                 ("Viewing", viewing),
                 ("Structure", structure),
+                ("", structure2),
             };
 
-            var xOff = 20;
-            foreach (var menu in menus)
+            int xOff = 5;
+            foreach ((string, (string, string)[]) menu in menus)
             {
-                var yOff = 20;
-                var header = new Text(menu.Item1, Font, MenuFontSize)
+                int yOff = 5;
+                Text header = new Text(menu.Item1, Font, MenuFontSize)
                 {
                     Position = new Vector2f(xOff, yOff),
                     FillColor = new Color(0, 0, 0)
                 };
                 Buttons.Add(header);
-                foreach (var menuItem in menu.Item2)
+                foreach ((string, string) menuItem in menu.Item2)
                 {
-                    yOff += 30;
-                    var button = AddButton(menuItem.Item1, menuItem.Item2);
+                    yOff += 20;
+                    Button button = AddButton(menuItem.Item1, menuItem.Item2);
                     button.Position = new Vector2f(xOff, yOff);
                     Buttons.Add(button);
                 }
 
-                xOff += 250;
+                xOff += 180;
             }
         }
 
@@ -407,20 +442,22 @@ namespace FressClient
             CharWidth = Font.GetGlyph('a', FontSize, false, 0).Advance;
             CharHeight = Font.GetLineSpacing(FontSize);
 
-            MainWindow = new RenderWindow(new VideoMode((uint) (CharWidth * 65 * 2), (uint) (CharHeight * 43)), "FRESS");
-            var window = MainWindow;
+            MainWindow = new RenderWindow(new VideoMode((uint)(CharWidth * 65 * 2), (uint)(CharHeight * 43)), "FRESS");
+            RenderWindow window = MainWindow;
             window.KeyPressed += WindowOnKeyPressed;
             window.TextEntered += Window_TextEntered;
             window.MouseButtonPressed += WindowOnMouseButtonPressed;
             window.MouseButtonReleased += Window_MouseButtonReleased;
             window.MouseWheelScrolled += Window_MouseWheelScrolled;
+            window.Resized += WindowOnResized;
             window.Closed += WindowOnClosed;
 
-            RenderWindow commandWindow = new RenderWindow(new VideoMode(1300, 450), "Commands");
+            RenderWindow commandWindow = new RenderWindow(new VideoMode(1085, 205), "Commands");
+            commandWindow.Resized += WindowOnResized;
             commandWindow.MouseButtonReleased += CommandWindowOnMouseButtonReleased;
 
-            CommandBuffer = new Buffer(new Vector2i(65, 1)) {Position = new Vector2f(0, CharHeight), DisplayCursor = true, DisableFormatting = true};
-            ErrorBuffer = new Buffer(new Vector2i(65, 1)) {Position = new Vector2f(CharWidth * 65, CharHeight)};
+            CommandBuffer = new Buffer(new Vector2i(65, 1)) { Position = new Vector2f(0, CharHeight), DisplayCursor = true, DisableFormatting = true };
+            ErrorBuffer = new Buffer(new Vector2i(65, 1)) { Position = new Vector2f(CharWidth * 65, CharHeight) };
             SetWindowConfig(WindowConfig.Config_1A);
             SetCurrentWindow(0);
 
@@ -428,41 +465,37 @@ namespace FressClient
 
             string ip = args[0];
             int port = int.Parse(args[1]);
-            Telnet server = new Telnet(ip, port);
-            Scripting = server.StartScripting(new TerminalOptions() {TerminalType = TerminalType.Ansi, NewLineSequence = NewLineSequence.CRLF});
-            var scripting = Scripting;
-            scripting.Timeout = 300;
+            Socket = new TelnetSocket(ip, port);
+            Socket.DataAvailable += OnDataAvailable;
+            //Telnet server = new Telnet(ip, port);
+            //Scripting = server.StartScripting(new TerminalOptions() { TerminalType = TerminalType.Ansi, NewLineSequence = NewLineSequence.CRLF });
+            //Scripting scripting = Scripting;
+            //scripting.Timeout = 300;
 
-            string res = scripting.ReadUntil(ScriptEvent.Timeout);
-            Console.WriteLine(res);
-            scripting.Send(ConsoleKey.Enter, 0);
-            res = scripting.ReadUntil(ScriptEvent.Timeout);
-            Console.WriteLine(res);
-            if (res.StartsWith("CMS"))
-            {
+            //string res = scripting.ReadUntil(ScriptEvent.Timeout);
+            //Console.WriteLine(res);
+            //scripting.Send(ConsoleKey.Enter, 0);
+            //res = scripting.ReadUntil(ScriptEvent.Timeout);
+            //Console.WriteLine(res);
+            //if (res.StartsWith("CMS"))
+            //{
 
-            }
-            else
-            {
-                scripting.Send("l dgd plasmate");
-                Console.WriteLine(scripting.ReadUntil(ScriptEvent.Timeout));
-                scripting.Send("b");
-                Console.WriteLine(scripting.ReadUntil(ScriptEvent.Timeout));
-                scripting.Send(ConsoleKey.Enter, 0);
-                res = scripting.ReadUntil(ScriptEvent.Timeout);
-                Console.WriteLine(res);
-                if (!res.StartsWith("CMS"))
-                {
-                    //Console.WriteLine("Error connecting to 370");
-                    //return;
-                }
-            }
-
-            var initialCommand = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(initialCommand))
-            {
-                SubmitCommand(initialCommand);
-            }
+            //}
+            //else
+            //{
+            //    scripting.Send("l dgd plasmate");
+            //    Console.WriteLine(scripting.ReadUntil(ScriptEvent.Timeout));
+            //    scripting.Send("b");
+            //    Console.WriteLine(scripting.ReadUntil(ScriptEvent.Timeout));
+            //    scripting.Send(ConsoleKey.Enter, 0);
+            //    res = scripting.ReadUntil(ScriptEvent.Timeout);
+            //    Console.WriteLine(res);
+            //    if (!res.StartsWith("CMS"))
+            //    {
+            //        //Console.WriteLine("Error connecting to 370");
+            //        //return;
+            //    }
+            //}
 
             while (window.IsOpen)
             {
@@ -479,7 +512,7 @@ namespace FressClient
                 window.Draw(CommandBuffer);
                 window.Draw(ErrorBuffer);
 
-                foreach (var rectangleShape in Buttons)
+                foreach (Drawable rectangleShape in Buttons)
                 {
                     commandWindow.Draw(rectangleShape);
                 }
@@ -489,12 +522,18 @@ namespace FressClient
             }
         }
 
+        private void WindowOnResized(object sender, SizeEventArgs e)
+        {
+            Debug.WriteLine($"{e.Width}, {e.Height}");
+            (sender as RenderWindow).SetView(new View(new FloatRect(0, 0, e.Width, e.Height)));
+        }
+
         private void Window_MouseWheelScrolled(object sender, MouseWheelScrollEventArgs e)
         {
-            for (var index = 0; index < Buffers.Length; index++)
+            for (int index = 0; index < Buffers.Length; index++)
             {
-                var buffer = Buffers[index];
-                var bounds = new FloatRect(buffer.Position,
+                Buffer buffer = Buffers[index];
+                FloatRect bounds = new FloatRect(buffer.Position,
                     new Vector2f(buffer.CharacterSize.X * CharWidth, buffer.CharacterSize.Y * CharHeight));
                 if (bounds.Contains(e.X, e.Y))
                 {
@@ -511,7 +550,7 @@ namespace FressClient
             {
                 return;
             }
-            foreach (var button in Buttons)
+            foreach (Drawable button in Buttons)
             {
                 if (button is Button b)
                 {
@@ -522,10 +561,10 @@ namespace FressClient
 
         private void WindowOnMouseButtonPressed(object sender, MouseButtonEventArgs e)
         {
-            for (var index = 0; index < Buffers.Length; index++)
+            for (int index = 0; index < Buffers.Length; index++)
             {
-                var buffer = Buffers[index];
-                var bounds = new FloatRect(buffer.Position,
+                Buffer buffer = Buffers[index];
+                FloatRect bounds = new FloatRect(buffer.Position,
                     new Vector2f(buffer.CharacterSize.X * CharWidth, buffer.CharacterSize.Y * CharHeight));
                 if (bounds.Contains(e.X, e.Y))
                 {
@@ -541,10 +580,10 @@ namespace FressClient
 
         private void Window_MouseButtonReleased(object sender, MouseButtonEventArgs e)
         {
-            for (var index = 0; index < Buffers.Length; index++)
+            for (int index = 0; index < Buffers.Length; index++)
             {
-                var buffer = Buffers[index];
-                var bounds = new FloatRect(buffer.Position,
+                Buffer buffer = Buffers[index];
+                FloatRect bounds = new FloatRect(buffer.Position,
                     new Vector2f(buffer.CharacterSize.X * CharWidth, buffer.CharacterSize.Y * CharHeight));
                 if (bounds.Contains(e.X, e.Y))
                 {
@@ -583,7 +622,7 @@ namespace FressClient
             ErrorBuffer.BufferText = "";
             if (e.Unicode == "\r")
             {
-                var command = CommandBuffer.BufferText;
+                string command = CommandBuffer.BufferText;
                 CommandBuffer.BufferText = "";
                 SubmitCommand(command);
             }

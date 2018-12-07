@@ -28,7 +28,7 @@ namespace FressClient
             target.Draw(_rectangleShape, states);
             var size = _renderableText.GetLocalBounds();
             _renderableText.Origin = new Vector2f(size.Width / 2, size.Height / 2);
-            _renderableText.Position = new Vector2f(_rectangleShape.Size.X / 2, _rectangleShape.Size.Y / 2);
+            _renderableText.Position = new Vector2f(_rectangleShape.Size.X / 2, _rectangleShape.Size.Y / 4);
             target.Draw(_renderableText, states);
         }
 

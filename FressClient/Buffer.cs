@@ -4,6 +4,7 @@ using SFML.Window;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text.RegularExpressions;
 
@@ -324,7 +325,9 @@ namespace FressClient
             }
 
             int startI = Math.Min(StartIndex, EndIndex);
+            startI -= 2 * BufferText.Substring(0, startI).Count(c => c == '\n') + 1;
             int endI = Math.Max(StartIndex, EndIndex);
+            endI -= 2 * BufferText.Substring(0, endI).Count(c => c == '\n') + 1;
             const int numChars = 15;
             string str;
             if (StartIndex == EndIndex)
@@ -332,7 +335,7 @@ namespace FressClient
                 //int end = Math.Min(BufferText.Length, startI + numChars);
                 //int start = end - numChars;
                 //str = BufferText.Substring(start, numChars);
-                str = GetLP(StartIndex);
+                str = GetLP(startI);
             }
             //else if (endI + 1 - startI < numChars)
             //{
@@ -341,7 +344,7 @@ namespace FressClient
             //}
             else
             {
-                str = GetLP(StartIndex) + GetLP(EndIndex);
+                str = GetLP(startI) + GetLP(endI);
                 //string startString = BufferText.Substring(startI, numChars);
                 //int end = Math.Min(BufferText.Length, endI + numChars);
                 //int start = end - numChars;
@@ -350,7 +353,6 @@ namespace FressClient
                 //endString = r.Replace(endString, match => match.Value + ".").Trim();
                 //str = $"{startString}...{endString}";
             }
-            Debug.WriteLine(str);
             TextClicked?.Invoke(str, button);
         }
     }
