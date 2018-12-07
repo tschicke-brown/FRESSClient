@@ -200,7 +200,7 @@ namespace FressClient
             Vector2f? characterPos = null;
             int count = charsRendered;
             var starti = Math.Min(StartIndex, EndIndex);
-            var endi = Math.Max(StartIndex, EndIndex);
+            var endi = Math.Max(StartIndex, EndIndex) + 1;//Make it inclusive
             foreach ((string subStr, Text.Styles subStyle) in splits)
             {
                 _drawableText.DisplayedString = subStr;
@@ -214,10 +214,6 @@ namespace FressClient
                     characterPos = new Vector2f(characterPos.Value.X, position.Y);
                 }
 
-                if (endi - starti > 60)
-                {
-
-                }
                 if (starti != -1 && endi != -1)
                 {
                     var currentStart = starti >= count + subStr.Length ? -1 : Math.Max(starti, count) - count;
