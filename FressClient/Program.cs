@@ -1,6 +1,4 @@
-﻿using Rebex.Net;
-using Rebex.TerminalEmulation;
-using SFML.Graphics;
+﻿using SFML.Graphics;
 using SFML.System;
 using SFML.Window;
 using System;
@@ -261,7 +259,7 @@ namespace FressClient
                         charsUsed = 0;
                         if (flag1.HasFlag(Flag1.TxSpecialMessage))
                         {
-                            var (text, junk) = GetText(command);
+                            (string text, int junk) = GetText(command);
                             if (text != null)
                             {
                                 Console.WriteLine($"Special Message: {text}");
@@ -271,7 +269,7 @@ namespace FressClient
                         }
                         else if (!flag1.HasFlag(Flag1.TxBinaryData) && command.Any() && command[0] != '\\')
                         {
-                            var (text, junk) = GetText(command);
+                            (string text, int junk) = GetText(command);
                             if (text != null)
                             {
                                 //Console.WriteLine($"Data: {text}");
@@ -332,7 +330,7 @@ namespace FressClient
 
         private void AddButtons()
         {
-            var patterns = new[]
+            (string, string)[] patterns = new[]
             {
                 ("Left end defer", "="),
                 ("Right end defer", "=?"),
@@ -342,7 +340,7 @@ namespace FressClient
                 ("Choose order", "-O"),
             };
 
-            var editing = new[]
+            (string, string)[] editing = new[]
             {
                 ("Delete text", "d"),
                 ("Insert text", "i"),
@@ -353,7 +351,7 @@ namespace FressClient
                 ("Revert", "rev"),
             };
 
-            var viewing = new[]
+            (string, string)[] viewing = new[]
             {
                 ("Change window", "cw/"),
                 ("Display space", "ds/"),
@@ -363,7 +361,7 @@ namespace FressClient
                 ("Query all files", "q/f"),
             };
 
-            var structure = new[]
+            (string, string)[] structure = new[]
             {
                 ("Block trail continuous", "bt/"),
                 ("Block trail discrete", "btd/"),
@@ -373,7 +371,7 @@ namespace FressClient
                 ("Make decimal reference", "mdr"),
                 ("Insert Annotation", "ia"),
             };
-            var structure2 = new []{
+            (string, string)[] structure2 = new[]{
                 ("Make annotation", "ma"),
                 ("Refer to annotation", "rta"),
                 ("Make jump", "mj"),
@@ -382,7 +380,7 @@ namespace FressClient
                 ("Split editing area", "sa"),
             };
 
-            var navigation = new[]
+            (string, string)[] navigation = new[]
             {
                 ("Jump", "j"),
                 ("Locate", "l"),
@@ -448,6 +446,7 @@ namespace FressClient
             window.TextEntered += Window_TextEntered;
             window.MouseButtonPressed += WindowOnMouseButtonPressed;
             window.MouseButtonReleased += Window_MouseButtonReleased;
+            window.MouseMoved += WindowOnMouseMoved;
             window.MouseWheelScrolled += Window_MouseWheelScrolled;
             window.Resized += WindowOnResized;
             window.Closed += WindowOnClosed;
@@ -561,17 +560,31 @@ namespace FressClient
 
         private void WindowOnMouseButtonPressed(object sender, MouseButtonEventArgs e)
         {
-            for (int index = 0; index < Buffers.Length; index++)
+            foreach (Buffer buffer in Buffers)
             {
-                Buffer buffer = Buffers[index];
                 FloatRect bounds = new FloatRect(buffer.Position,
                     new Vector2f(buffer.CharacterSize.X * CharWidth, buffer.CharacterSize.Y * CharHeight));
                 if (bounds.Contains(e.X, e.Y))
                 {
                     if (e.Button == Mouse.Button.Left || e.Button == Mouse.Button.Right)
                     {
-                        buffer.HandleMouse(e.X, e.Y, true, e.Button);
+                        buffer.HandleMousePress(e.X, e.Y, e.Button);
                     }
+
+                    break;
+                }
+            }
+        }
+
+        private void WindowOnMouseMoved(object sender, MouseMoveEventArgs e)
+        {
+            foreach (Buffer buffer in Buffers)
+            {
+                FloatRect bounds = new FloatRect(buffer.Position,
+                    new Vector2f(buffer.CharacterSize.X * CharWidth, buffer.CharacterSize.Y * CharHeight));
+                if (bounds.Contains(e.X, e.Y))
+                {
+                    buffer.HandleMouseMove(e.X, e.Y);
 
                     break;
                 }
@@ -589,13 +602,14 @@ namespace FressClient
                 {
                     if (e.Button == Mouse.Button.Left || e.Button == Mouse.Button.Right)
                     {
-                        buffer.HandleMouse(e.X, e.Y, false, e.Button);
+                        buffer.HandleMouseReleased(e.X, e.Y, e.Button);
                     }
                     else if (e.Button == Mouse.Button.Middle)
                     {
                         SubmitCommand("cw " + (index + 1));
                     }
 
+                    buffer.MouseReleased();
                     break;
                 }
                 buffer.MouseReleased();
@@ -611,6 +625,13 @@ namespace FressClient
                     break;
                 case Keyboard.Key.Right:
                     CommandBuffer.CursorRight();
+                    break;
+                case Keyboard.Key.Escape:
+                    foreach (var buffer in Buffers)
+                    {
+                        buffer.MouseReleased();
+                    }
+
                     break;
                 default:
                     break;

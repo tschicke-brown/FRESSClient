@@ -5,8 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using System.Text.RegularExpressions;
 
 namespace FressClient
 {
@@ -15,6 +13,7 @@ namespace FressClient
         private readonly Text _drawableText;
         private RectangleShape _cursor;
         private RectangleShape _border;
+        private RectangleShape _textHighlight;
         private int _cursorIndex;
         private string _bufferText = "";
 
@@ -51,6 +50,7 @@ namespace FressClient
             _drawableText = new Text(BufferText, Program.Font, Program.FontSize);
             _cursor = new RectangleShape() { FillColor = new Color(Color.White) };
             _border = new RectangleShape() { FillColor = new Color(0, 0, 0, 0), OutlineColor = new Color(0x7f, 0x7f, 0x7f), OutlineThickness = 1 };
+            _textHighlight = new RectangleShape() { FillColor = new Color(0xff, 0xff, 0xff, 0x77) };
             CharacterSize = characterSize;
         }
 
@@ -79,12 +79,12 @@ namespace FressClient
             _cursor.Size = new Vector2f(size.Width, height - 1);
             _drawableText.DisplayedString = "";
 
-            int cursorIndex = _cursorIndex;
             string[] lines = BufferText.Split("\n");
             Vector2f? cursorPos = null;
             Vector2f currentPosition = new Vector2f(0, 0);
             int linesDrawn = 0;
             Text.Styles style = 0;
+                int charsDrawn = 0;
             foreach (string line in lines)
             {
                 if (linesDrawn++ >= CharacterSize.Y)
@@ -93,20 +93,18 @@ namespace FressClient
                 }
                 string drawable = line;
                 Vector2f? pos;
-                int charsDrawn;
                 while (drawable.Length > CharacterSize.X)
                 {
                     string l = drawable.Substring(0, CharacterSize.X);
                     drawable = drawable.Substring(CharacterSize.X);
-                    (pos, style, charsDrawn) = DrawString(l, target, states, style, currentPosition, cursorIndex);
+                    (pos, style, charsDrawn) = DrawString(l, target, states, style, currentPosition, charsDrawn);
                     cursorPos = cursorPos ?? pos;
-                    cursorIndex -= charsDrawn;
                     currentPosition.Y += height;
                 }
 
-                (pos, style, charsDrawn) = DrawString(drawable, target, states, style, currentPosition, cursorIndex);
+                (pos, style, charsDrawn) = DrawString(drawable, target, states, style, currentPosition, charsDrawn);
                 cursorPos = cursorPos ?? pos;
-                cursorIndex -= charsDrawn + 1;// +1 for new line
+                charsDrawn++;//for newline
                 currentPosition.Y += height;
             }
 
@@ -126,7 +124,7 @@ namespace FressClient
             target.Draw(_border, states);
         }
 
-        private (Vector2f?, Text.Styles, int) DrawString(string s, RenderTarget target, RenderStates states, Text.Styles style, Vector2f position, int cursorPos)
+        private (Vector2f?, Text.Styles, int) DrawString(string s, RenderTarget target, RenderStates states, Text.Styles style, Vector2f position, int charsRendered)
         {
             List<(string, Text.Styles)> SplitString(string str, Text.Styles initialStyle)
             {
@@ -200,24 +198,42 @@ namespace FressClient
 
             List<(string, Text.Styles)> splits = SplitString(s, style);
             Vector2f? characterPos = null;
-            int count = 0;
+            int count = charsRendered;
+            var starti = Math.Min(StartIndex, EndIndex);
+            var endi = Math.Max(StartIndex, EndIndex);
             foreach ((string subStr, Text.Styles subStyle) in splits)
             {
-
                 _drawableText.DisplayedString = subStr;
                 _drawableText.CharacterSize = style == Text.Styles.Bold ? Program.FontSize - 2 : Program.FontSize;
                 _drawableText.Position = position;
                 _drawableText.Style = subStyle;
                 target.Draw(_drawableText, states);
-                if (cursorPos <= subStr.Length && cursorPos >= 0)
+                if (_cursorIndex >= count && _cursorIndex <= count + subStr.Length)
                 {
-                    characterPos = _drawableText.FindCharacterPos((uint)cursorPos);
+                    characterPos = _drawableText.FindCharacterPos((uint)(_cursorIndex - count));
                     characterPos = new Vector2f(characterPos.Value.X, position.Y);
+                }
+
+                if (endi - starti > 60)
+                {
+
+                }
+                if (starti != -1 && endi != -1)
+                {
+                    var currentStart = starti >= count + subStr.Length ? -1 : Math.Max(starti, count) - count;
+                    var currentEnd = endi < count ? -1 : Math.Min(endi, count + subStr.Length) - count;
+                    if (currentStart != -1 && currentEnd != -1)
+                    {
+                        var startPos = _drawableText.FindCharacterPos((uint)currentStart);
+                        var endPos = _drawableText.FindCharacterPos((uint)currentEnd);
+                        _textHighlight.Position = new Vector2f(startPos.X, position.Y);
+                        _textHighlight.Size = new Vector2f(endPos.X - startPos.X, Program.CharHeight);
+                        target.Draw(_textHighlight, states);
+                    }
                 }
 
                 position.X += _drawableText.GetLocalBounds().Width;
                 count += subStr.Length;
-                cursorPos -= subStr.Length;
             }
 
 
@@ -226,6 +242,10 @@ namespace FressClient
 
         public void HandleText(TextEventArgs args)
         {
+            if (args.Unicode == "\u001b")
+            {
+                return;
+            }
             string newChar = args.Unicode;
             if (newChar == "\b")
             {
@@ -269,8 +289,7 @@ namespace FressClient
             GoToEnd();
         }
 
-        private int StartIndex = -1, EndIndex = -1;
-        public void HandleMouse(float x, float y, bool pressed, Mouse.Button button)
+        private int GetIndex(float x, float y)
         {
             FloatRect rect = new FloatRect(Position, new Vector2f(Program.CharWidth, Program.CharHeight));
             int col = 0;
@@ -286,20 +305,48 @@ namespace FressClient
 
                 if (rect.Contains(x, y))
                 {
-                    if (pressed)
-                    {
-                        StartIndex = i;
-                    }
-                    else
-                    {
-                        EndIndex = i;
-                        SendText(button);
-                    }
+                    return i;
                 }
 
                 col++;
                 rect.Left += rect.Width;
             }
+
+            return -1;
+        }
+
+        private int StartIndex = -1, EndIndex = -1;
+
+        public void HandleMousePress(float x, float y, Mouse.Button button)
+        {
+            int index = GetIndex(x, y);
+            if (index == -1)
+            {
+                return;
+            }
+
+            StartIndex = index;
+        }
+
+        public void HandleMouseMove(float x, float y)
+        {
+            if (StartIndex == -1)
+            {
+                return;
+            }
+
+            int index = GetIndex(x, y);
+            if (index == -1)
+            {
+                return;
+            }
+
+            EndIndex = index;
+        }
+
+        public void HandleMouseReleased(float x, float y, Mouse.Button button)
+        {
+            SendText(button);
         }
 
         public void MouseReleased()
@@ -308,7 +355,7 @@ namespace FressClient
             EndIndex = -1;
         }
 
-        private static Regex r = new Regex( @"\.\.\.\.*");
+        //private static Regex r = new Regex( @"\.\.\.\.*");
         protected virtual void SendText(Mouse.Button button)
         {
             if (StartIndex == -1 || EndIndex == -1)
@@ -319,8 +366,8 @@ namespace FressClient
             string translation = "0123456789[]*_;\"";
             string GetLP(int index)
             {
-                var s = "`";
-                var temp = (uint) index;
+                string s = "`";
+                uint temp = (uint) index;
                 for (int i = 0; i < 4; ++i)
                 {
                     char c = translation[(int)(temp & 0xf)];
