@@ -293,10 +293,19 @@ namespace FressClient
             {
                 if (col == CharacterSize.X || BufferText[i] == '\n')
                 {
+                    if (x >= rect.Left && y >= rect.Top && y < rect.Top + rect.Height)
+                    {
+                        return i;
+                    }
                     col = 0;
                     rect.Left = Position.X;
                     rect.Top += rect.Height;
                     if (BufferText[i] == '\n') continue;
+                }
+
+                if (col == 0 && x < rect.Left && y >= rect.Top && y < rect.Top + rect.Height)
+                {
+                    return i;
                 }
 
                 if (rect.Contains(x, y))
@@ -308,7 +317,7 @@ namespace FressClient
                 rect.Left += rect.Width;
             }
 
-            return -1;
+            return BufferText.Length;
         }
 
         private int StartIndex = -1, EndIndex = -1;
