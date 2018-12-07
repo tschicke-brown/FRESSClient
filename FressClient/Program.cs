@@ -453,7 +453,7 @@ namespace FressClient
 
             RenderWindow commandWindow = new RenderWindow(new VideoMode(1085, 205), "Commands");
             commandWindow.Resized += WindowOnResized;
-            commandWindow.MouseButtonReleased += CommandWindowOnMouseButtonReleased;
+            commandWindow.MouseButtonPressed += CommandWindowOnMouseButtonReleased;
 
             CommandBuffer = new Buffer(new Vector2i(65, 1)) { Position = new Vector2f(0, CharHeight), DisplayCursor = true, DisableFormatting = true };
             ErrorBuffer = new Buffer(new Vector2i(65, 1)) { Position = new Vector2f(CharWidth * 65, CharHeight) };
