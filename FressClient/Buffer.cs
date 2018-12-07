@@ -136,21 +136,16 @@ namespace FressClient
                 }
 
                 List<(string, Text.Styles)> strings = new List<(string, Text.Styles)>();
-                int openIndex = -2, closeIndex = -2;
+                int openItalicIndex = -2, openBoldIndex = -2;
+                int closeIndex = -2;
                 int start = 0;
                 for (int i = 0; i < str.Length;)
                 {
-                    if (openIndex == -2)
-                    {
-                        openIndex = str.IndexOf("!(1", i);
-                    }
+                    if (openItalicIndex == -2) openItalicIndex = str.IndexOf("!(1", i);
+                    if (openBoldIndex == -2) openBoldIndex = str.IndexOf("!(0", i);
+                    if (closeIndex == -2) closeIndex = str.IndexOf("!)", i);
 
-                    if (closeIndex == -2)
-                    {
-                        closeIndex = str.IndexOf("!)", i);
-                    }
-
-                    if (i == openIndex)
+                    if (i == openItalicIndex)
                     {
                         if (start != i)
                         {
@@ -158,6 +153,20 @@ namespace FressClient
                             strings.Add((segment, initialStyle));
                         }
                         initialStyle = Text.Styles.Italic;
+
+                        i += 3;
+                        start = i;
+                        continue;
+                    }
+
+                    if (i == openBoldIndex)
+                    {
+                        if (start != i)
+                        {
+                            string segment = str.Substring(start, i - start);
+                            strings.Add((segment, initialStyle));
+                        }
+                        initialStyle = Text.Styles.Bold;
 
                         i += 3;
                         start = i;
