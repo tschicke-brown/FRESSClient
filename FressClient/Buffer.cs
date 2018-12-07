@@ -342,6 +342,13 @@ namespace FressClient
 
         public void HandleMouseReleased(float x, float y, Mouse.Button button)
         {
+            int index = GetIndex(x, y);
+            if (index == -1)
+            {
+                return;
+            }
+
+            EndIndex = index;
             SendText(button);
         }
 
