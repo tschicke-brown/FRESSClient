@@ -16,7 +16,7 @@ namespace FressClient
 
         static void Main(string[] args)
         {
-            Rebex.Licensing.Key = "==AKOz7Fgv0W1Kau2iJwlo61vuaQ1v05EfMcFXUgg6T5rQ==";
+            //Rebex.Licensing.Key = "==AKOz7Fgv0W1Kau2iJwlo61vuaQ1v05EfMcFXUgg6T5rQ==";
             new Program().Run(args);
         }
 
@@ -536,8 +536,12 @@ namespace FressClient
                     new Vector2f(buffer.CharacterSize.X * CharWidth, buffer.CharacterSize.Y * CharHeight));
                 if (bounds.Contains(e.X, e.Y))
                 {
-                    SubmitCommand("cw " + (index + 1));
-                    SubmitCommand((-e.Delta * 6).ToString());
+                    if (CurrentBufferIndex != index)
+                    {
+                        SubmitCommand("cw " + (index + 1));
+                    }
+
+                    SubmitCommand((-e.Delta * 12).ToString());
                     break;
                 }
             }

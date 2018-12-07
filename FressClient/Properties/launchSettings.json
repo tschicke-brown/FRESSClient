@@ -2,7 +2,7 @@
   "profiles": {
     "FressClient": {
       "commandName": "Project",
-      "commandLineArgs": "34.227.82.243 3270"
+      "commandLineArgs": "52.203.10.15 3270"
     }
   }
 }

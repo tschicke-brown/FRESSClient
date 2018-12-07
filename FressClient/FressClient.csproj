@@ -9,10 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Rebex.Telnet" Version="1.0.6874" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Reference Include="sfml-graphics">
       <HintPath>..\..\..\..\Downloads\SFML.Net-2.4\SFML.Net-2.4\src\Graphics\bin\Debug\netstandard2.0\sfml-graphics.dll</HintPath>
       <Private>true</Private>
