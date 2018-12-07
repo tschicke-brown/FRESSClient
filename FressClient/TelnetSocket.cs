@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
@@ -20,7 +21,7 @@ namespace FressClient
             _buffer = new Queue<byte>();
             Task.Run(async () =>
             {
-                byte[] buffer = new byte[256];
+                byte[] buffer = new byte[4096];
                 List<byte> bList = new List<byte>();
                 List<byte> outBuffer = new List<byte>();
                 while (true)
@@ -34,6 +35,7 @@ namespace FressClient
                             {
                                 bList.Add(buffer[i]);
                             }
+                            Debug.WriteLine($"Read {bytesRead} bytes");
                         }
                     }
                     else
@@ -107,7 +109,7 @@ namespace FressClient
                         }
                     }
 
-                    await Task.Delay(50);
+                    await Task.Delay(10);
                 }
             });
         }
