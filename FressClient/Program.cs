@@ -220,77 +220,79 @@ namespace FressClient
             }
         }
 
-        private Regex _commandRegex = new Regex(@"\n  ?\\");
-        private void ParseResponse(string res)
+        private Regex _commandRegex = new Regex(@"^ ? ?\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?<op1>\d)?(?<op2>\d)?\\", RegexOptions.Multiline);
+        private Regex _commandWithTextRegex = new Regex(@"^ ? ?\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?<op1>\d)?(?<op2>\d)? (?<data>.*?)\|", RegexOptions.Multiline | RegexOptions.Singleline);
+        private string _responseBuffer = "";
+
+        private void HandleResponse(string response)
         {
-            void HandleCommand(string command)
+            _responseBuffer += response;
+
+            void HandleCommand(int window, int currentWindow, Flag1 flag1, Flag2 flag2, int? windowConfig, string text)
             {
-                (string, int) GetText(string commandString)
+                if (flag1.HasFlag(Flag1.TxWindowDimensions))
                 {
-                    Match match = _commandRegex.Match(command);
-                    int nextCommand = match.Success ? match.Index : -1;
-                    return nextCommand != -1 ?
-                        (command.Substring(0, nextCommand), match.Length - 1) :
-                        (command, 0);
+                    Debug.Assert(windowConfig.HasValue);
+                    SetWindowConfig(((WindowConfig[])Enum.GetValues(typeof(WindowConfig)))[windowConfig ?? 0]);
                 }
 
-                while (!string.IsNullOrEmpty(command))
+                SetCurrentWindow(currentWindow - 1);
+
+                Console.WriteLine($"Window Number: {window}, CurrentWindow: {currentWindow}, Flag1: {flag1}, Flag2: {flag2}");
+
+                if (flag1.HasFlag(Flag1.TxSpecialMessage) && text != null)
                 {
-                    if (command.StartsWith('\\')) //Command
-                    {
-                        int windowNumber = command[1] - '0';
-                        int currentWindowNumber = command[2] - '0';
-                        Flag1 flag1 = (Flag1)(command[3] - '0');
-                        Flag2 flag2 = (Flag2)(command[4] - '0');
-                        int charsUsed = 5;
-
-                        if (flag1.HasFlag(Flag1.TxWindowDimensions))
-                        {
-                            int windowConfig = command[5] - '0';
-                            SetWindowConfig(((WindowConfig[])Enum.GetValues(typeof(WindowConfig)))[windowConfig]);
-                            charsUsed = 7;
-                        }
-
-                        SetCurrentWindow(currentWindowNumber - 1);
-
-                        Console.WriteLine($"Window Number: {windowNumber}, CurrentWindow: {currentWindowNumber}, Flag1: {flag1}, Flag2: {flag2}");
-
-                        command = command.Substring(charsUsed);
-                        charsUsed = 0;
-                        if (flag1.HasFlag(Flag1.TxSpecialMessage))
-                        {
-                            (string text, int junk) = GetText(command);
-                            if (text != null)
-                            {
-                                Console.WriteLine($"Special Message: {text}");
-                                ErrorBuffer.BufferText = text.Replace("\r", "");
-                                charsUsed += text.Length + junk;
-                            }
-                        }
-                        else if (!flag1.HasFlag(Flag1.TxBinaryData) && command.Any() && command[0] != '\\')
-                        {
-                            (string text, int junk) = GetText(command);
-                            if (text != null)
-                            {
-                                //Console.WriteLine($"Data: {text}");
-                                Buffers[windowNumber - 1].BufferText = text.Replace("\r", "");
-                                charsUsed += text.Length + junk;
-                            }
-                        }
-
-                        command = command.Substring(charsUsed);
-                    }
-                    else
-                    {
-                        return;
-                    }
+                    Console.WriteLine($"Special message: {text}");
+                    ErrorBuffer.BufferText = text.Replace("\r", "");
+                } else if (!flag1.HasFlag(Flag1.TxBinaryData) && text != null)
+                {
+                    Buffers[window - 1].BufferText = text.Replace("\r", "");
                 }
             }
-            string[] contents = res.Split('|');
-            foreach (string content in contents)
+            bool ParseCommand()
             {
-                HandleCommand(content);
+                Match commandMatch = _commandRegex.Match(_responseBuffer);
+                if (commandMatch.Success)
+                {
+                    var window = commandMatch.Groups["winNum"].Captures[0].Value[0] - '0';
+                    var currentWindow = commandMatch.Groups["curWinNum"].Captures[0].Value[0] - '0';
+                    var flag1 = (Flag1)commandMatch.Groups["flag1"].Captures[0].Value[0] - '0';
+                    var flag2 = (Flag2)commandMatch.Groups["flag2"].Captures[0].Value[0] - '0';
+                    int? windowConfig = null;
+                    var windowConfigMatch = commandMatch.Groups["op1"];
+                    if (windowConfigMatch.Success)
+                    {
+                        windowConfig = windowConfigMatch.Captures[0].Value[0] - '0';
+                    }
+                    HandleCommand(window, currentWindow, flag1, flag2, windowConfig, null);
+                    _responseBuffer = _responseBuffer.Substring(commandMatch.Index + commandMatch.Length - 1); //Exclude extra matched \
+                    return true;
+                }
+
+                Match commandTextMatch = _commandWithTextRegex.Match(_responseBuffer);
+                if (commandTextMatch.Success)
+                {
+                    var window = commandTextMatch.Groups["winNum"].Captures[0].Value[0] - '0';
+                    var currentWindow = commandTextMatch.Groups["curWinNum"].Captures[0].Value[0] - '0';
+                    var flag1 = (Flag1)commandTextMatch.Groups["flag1"].Captures[0].Value[0] - '0';
+                    var flag2 = (Flag2)commandTextMatch.Groups["flag2"].Captures[0].Value[0] - '0';
+                    int? windowConfig = null;
+                    var windowConfigMatch = commandTextMatch.Groups["op1"];
+                    if (windowConfigMatch.Success)
+                    {
+                        windowConfig = windowConfigMatch.Captures[0].Value[0] - '0';
+                    }
+
+                    var text = commandTextMatch.Groups["data"].Captures[0].Value;
+                    HandleCommand(window, currentWindow, flag1, flag2, windowConfig, text);
+                    _responseBuffer = _responseBuffer.Substring(commandTextMatch.Index + commandTextMatch.Length);
+                    return true;
+                }
+
+                return false;
             }
+
+            while (ParseCommand());
         }
 
         //public Scripting Scripting;
@@ -313,7 +315,7 @@ namespace FressClient
             string res = Socket.Read();
             if (res != null)
             {
-                ParseResponse(res);
+                HandleResponse(res);
             }
         }
 
@@ -631,7 +633,7 @@ namespace FressClient
                     CommandBuffer.CursorRight();
                     break;
                 case Keyboard.Key.Escape:
-                    foreach (var buffer in Buffers)
+                    foreach (Buffer buffer in Buffers)
                     {
                         buffer.MouseReleased();
                     }

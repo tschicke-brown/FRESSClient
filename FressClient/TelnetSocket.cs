@@ -26,7 +26,7 @@ namespace FressClient
                 List<byte> outBuffer = new List<byte>();
                 while (true)
                 {
-                    if (!bList.Any() || _stream.DataAvailable)
+                    //if (!bList.Any() || _stream.DataAvailable)
                     {
                         int bytesRead = await _stream.ReadAsync(buffer, 0, buffer.Length);
                         if (bytesRead != 0)
@@ -38,7 +38,7 @@ namespace FressClient
                             Debug.WriteLine($"Read {bytesRead} bytes");
                         }
                     }
-                    else
+                    //else
                     {
                         lock (_bufferLock)
                         {
@@ -108,8 +108,6 @@ namespace FressClient
                             DataAvailable?.Invoke();
                         }
                     }
-
-                    await Task.Delay(10);
                 }
             });
         }
