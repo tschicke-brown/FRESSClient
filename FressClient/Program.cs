@@ -222,6 +222,7 @@ namespace FressClient
 
         private Regex _commandRegex = new Regex(@"^ ? ?\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?<op1>\d)?(?<op2>\d)?\\", RegexOptions.Multiline);
         private Regex _commandWithTextRegex = new Regex(@"^ ? ?\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?<op1>\d)?(?<op2>\d)? (?<data>.*?)\|", RegexOptions.Multiline | RegexOptions.Singleline);
+        private Regex _specialCommandRegex = new Regex(@"^ ? ?\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d) (?<data>.*?)\n", RegexOptions.Multiline | RegexOptions.Singleline);
         private string _responseBuffer = "";
 
         private void HandleResponse(string response)
@@ -287,6 +288,24 @@ namespace FressClient
                     HandleCommand(window, currentWindow, flag1, flag2, windowConfig, text);
                     _responseBuffer = _responseBuffer.Substring(commandTextMatch.Index + commandTextMatch.Length);
                     return true;
+                }
+
+                Match specialCommandMatch = _specialCommandRegex.Match(_responseBuffer);
+                if (specialCommandMatch.Success)
+                {
+                    var window = specialCommandMatch.Groups["winNum"].Captures[0].Value[0] - '0';
+                    var currentWindow = specialCommandMatch.Groups["curWinNum"].Captures[0].Value[0] - '0';
+                    var flag1 = (Flag1)specialCommandMatch.Groups["flag1"].Captures[0].Value[0] - '0';
+                    var flag2 = (Flag2)specialCommandMatch.Groups["flag2"].Captures[0].Value[0] - '0';
+
+                    if (flag1.HasFlag(Flag1.TxSpecialMessage))
+                    {
+
+                        var text = specialCommandMatch.Groups["data"].Captures[0].Value;
+                        HandleCommand(window, currentWindow, flag1, flag2, null, text);
+                        _responseBuffer = _responseBuffer.Substring(specialCommandMatch.Index + specialCommandMatch.Length);
+                        return true;
+                    }
                 }
 
                 return false;
