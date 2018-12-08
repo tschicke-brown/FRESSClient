@@ -34,23 +34,26 @@ namespace FressClient
             /// <summary>
             /// Logical pixels inch in Y
             /// </summary>
-            LOGPIXELSY = 90
+            LOGPIXELSY = 90,
+
+
+            VERTRES = 10,
+
+            DESKTOPVERTRES = 117
 
             // Other constants may be founded on pinvoke.net
         }
 
-        public static Point GetSystemDpi()
+        public static float GetSystemScaling()
         {
-            Point result = new Point();
-
             IntPtr hDC = GetDC(IntPtr.Zero);
 
-            result.X = GetDeviceCaps(hDC, (int)DeviceCap.LOGPIXELSX);
-            result.Y = GetDeviceCaps(hDC, (int)DeviceCap.LOGPIXELSY);
-
+            float logicalHeight = GetDeviceCaps(hDC, (int)DeviceCap.VERTRES);
+            float physicalHeight = GetDeviceCaps(hDC, (int)DeviceCap.DESKTOPVERTRES);
+            float dpi = GetDeviceCaps(hDC, (int) DeviceCap.LOGPIXELSY) / 96.0f;
             ReleaseDC(IntPtr.Zero, hDC);
 
-            return result;
+            return physicalHeight * dpi / logicalHeight;
         }
 
         static void Main(string[] args)
@@ -488,7 +491,7 @@ namespace FressClient
 
         private RenderWindow MainWindow { get; set; }
 
-        private Point _dpi = new Point(1, 1);
+        private float _scaling;
 
         private void Run(string[] args)
         {
@@ -503,11 +506,9 @@ namespace FressClient
             CharWidth = Font.GetGlyph('a', FontSize, false, 0).Advance;
             CharHeight = Font.GetLineSpacing(FontSize);
 
-            _dpi = GetSystemDpi();
-            _dpi.X /= 96;
-            _dpi.Y /= 96;
+            _scaling = GetSystemScaling();
 
-            MainWindow = new RenderWindow(new VideoMode((uint)(CharWidth * 65 * 2), (uint)(CharHeight * 43)), "FRESS");
+            MainWindow = new RenderWindow(new VideoMode((uint)(CharWidth * 65 * 2 * _scaling), (uint)(CharHeight * 43 * _scaling)), "FRESS");
             RenderWindow window = MainWindow;
             window.KeyPressed += WindowOnKeyPressed;
             window.TextEntered += Window_TextEntered;
@@ -518,15 +519,19 @@ namespace FressClient
             window.Resized += WindowOnResized;
             window.Closed += WindowOnClosed;
 
-            var view = window.GetView();
-            view.Size = new Vector2f(view.Size.X * _dpi.X, view.Size.Y * _dpi.Y);
+            var view = new View(window.GetView());
+            view.Size = new Vector2f(view.Size.X / _scaling, view.Size.Y / _scaling);
+            view.Center = new Vector2f(view.Size.X / 2, view.Size.Y / 2);
+            window.SetView(view);
 
-            RenderWindow commandWindow = new RenderWindow(new VideoMode(1085, 205), "Commands");
+            RenderWindow commandWindow = new RenderWindow(new VideoMode((uint) (1085 * _scaling), (uint) (205* _scaling)), "Commands");
             commandWindow.Resized += WindowOnResized;
             commandWindow.MouseButtonPressed += CommandWindowOnMouseButtonReleased;
 
-            view = commandWindow.GetView();
-            view.Size = new Vector2f(view.Size.X * _dpi.X, view.Size.Y * _dpi.Y);
+            view = new View(commandWindow.GetView());
+            view.Size = new Vector2f(view.Size.X / _scaling, view.Size.Y / _scaling);
+            view.Center = new Vector2f(view.Size.X / 2, view.Size.Y / 2);
+            commandWindow.SetView(view);
 
             commandWindow.Position = new Vector2i(0, 0);
             window.Position = new Vector2i(200, (int)commandWindow.Size.Y + 40);
