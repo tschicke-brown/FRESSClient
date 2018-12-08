@@ -4,7 +4,9 @@ using SFML.Window;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using Color = SFML.Graphics.Color;
@@ -13,6 +15,43 @@ namespace FressClient
 {
     class Program
     {
+
+        [DllImport("gdi32.dll", CharSet = CharSet.Auto, SetLastError = true, ExactSpelling = true)]
+        public static extern int GetDeviceCaps(IntPtr hDC, int nIndex);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetDC(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+
+        public enum DeviceCap
+        {
+            /// <summary>
+            /// Logical pixels inch in X
+            /// </summary>
+            LOGPIXELSX = 88,
+            /// <summary>
+            /// Logical pixels inch in Y
+            /// </summary>
+            LOGPIXELSY = 90
+
+            // Other constants may be founded on pinvoke.net
+        }
+
+        public static Point GetSystemDpi()
+        {
+            Point result = new Point();
+
+            IntPtr hDC = GetDC(IntPtr.Zero);
+
+            result.X = GetDeviceCaps(hDC, (int)DeviceCap.LOGPIXELSX);
+            result.Y = GetDeviceCaps(hDC, (int)DeviceCap.LOGPIXELSY);
+
+            ReleaseDC(IntPtr.Zero, hDC);
+
+            return result;
+        }
 
         static void Main(string[] args)
         {
@@ -245,7 +284,8 @@ namespace FressClient
                 {
                     Console.WriteLine($"Special message: {text}");
                     ErrorBuffer.BufferText = text.Replace("\r", "");
-                } else if (!flag1.HasFlag(Flag1.TxBinaryData) && text != null)
+                }
+                else if (!flag1.HasFlag(Flag1.TxBinaryData) && text != null)
                 {
                     Buffers[window - 1].BufferText = text.Replace("\r", "");
                 }
@@ -255,12 +295,12 @@ namespace FressClient
                 Match commandMatch = _commandRegex.Match(_responseBuffer);
                 if (commandMatch.Success)
                 {
-                    var window = commandMatch.Groups["winNum"].Captures[0].Value[0] - '0';
-                    var currentWindow = commandMatch.Groups["curWinNum"].Captures[0].Value[0] - '0';
-                    var flag1 = (Flag1)commandMatch.Groups["flag1"].Captures[0].Value[0] - '0';
-                    var flag2 = (Flag2)commandMatch.Groups["flag2"].Captures[0].Value[0] - '0';
+                    int window = commandMatch.Groups["winNum"].Captures[0].Value[0] - '0';
+                    int currentWindow = commandMatch.Groups["curWinNum"].Captures[0].Value[0] - '0';
+                    Flag1 flag1 = (Flag1)commandMatch.Groups["flag1"].Captures[0].Value[0] - '0';
+                    Flag2 flag2 = (Flag2)commandMatch.Groups["flag2"].Captures[0].Value[0] - '0';
                     int? windowConfig = null;
-                    var windowConfigMatch = commandMatch.Groups["op1"];
+                    Group windowConfigMatch = commandMatch.Groups["op1"];
                     if (windowConfigMatch.Success)
                     {
                         windowConfig = windowConfigMatch.Captures[0].Value[0] - '0';
@@ -273,18 +313,18 @@ namespace FressClient
                 Match commandTextMatch = _commandWithTextRegex.Match(_responseBuffer);
                 if (commandTextMatch.Success)
                 {
-                    var window = commandTextMatch.Groups["winNum"].Captures[0].Value[0] - '0';
-                    var currentWindow = commandTextMatch.Groups["curWinNum"].Captures[0].Value[0] - '0';
-                    var flag1 = (Flag1)commandTextMatch.Groups["flag1"].Captures[0].Value[0] - '0';
-                    var flag2 = (Flag2)commandTextMatch.Groups["flag2"].Captures[0].Value[0] - '0';
+                    int window = commandTextMatch.Groups["winNum"].Captures[0].Value[0] - '0';
+                    int currentWindow = commandTextMatch.Groups["curWinNum"].Captures[0].Value[0] - '0';
+                    Flag1 flag1 = (Flag1)commandTextMatch.Groups["flag1"].Captures[0].Value[0] - '0';
+                    Flag2 flag2 = (Flag2)commandTextMatch.Groups["flag2"].Captures[0].Value[0] - '0';
                     int? windowConfig = null;
-                    var windowConfigMatch = commandTextMatch.Groups["op1"];
+                    Group windowConfigMatch = commandTextMatch.Groups["op1"];
                     if (windowConfigMatch.Success)
                     {
                         windowConfig = windowConfigMatch.Captures[0].Value[0] - '0';
                     }
 
-                    var text = commandTextMatch.Groups["data"].Captures[0].Value;
+                    string text = commandTextMatch.Groups["data"].Captures[0].Value;
                     HandleCommand(window, currentWindow, flag1, flag2, windowConfig, text);
                     _responseBuffer = _responseBuffer.Substring(commandTextMatch.Index + commandTextMatch.Length);
                     return true;
@@ -293,15 +333,15 @@ namespace FressClient
                 Match specialCommandMatch = _specialCommandRegex.Match(_responseBuffer);
                 if (specialCommandMatch.Success)
                 {
-                    var window = specialCommandMatch.Groups["winNum"].Captures[0].Value[0] - '0';
-                    var currentWindow = specialCommandMatch.Groups["curWinNum"].Captures[0].Value[0] - '0';
-                    var flag1 = (Flag1)specialCommandMatch.Groups["flag1"].Captures[0].Value[0] - '0';
-                    var flag2 = (Flag2)specialCommandMatch.Groups["flag2"].Captures[0].Value[0] - '0';
+                    int window = specialCommandMatch.Groups["winNum"].Captures[0].Value[0] - '0';
+                    int currentWindow = specialCommandMatch.Groups["curWinNum"].Captures[0].Value[0] - '0';
+                    Flag1 flag1 = (Flag1)specialCommandMatch.Groups["flag1"].Captures[0].Value[0] - '0';
+                    Flag2 flag2 = (Flag2)specialCommandMatch.Groups["flag2"].Captures[0].Value[0] - '0';
 
                     if (flag1.HasFlag(Flag1.TxSpecialMessage))
                     {
 
-                        var text = specialCommandMatch.Groups["data"].Captures[0].Value;
+                        string text = specialCommandMatch.Groups["data"].Captures[0].Value;
                         HandleCommand(window, currentWindow, flag1, flag2, null, text);
                         _responseBuffer = _responseBuffer.Substring(specialCommandMatch.Index + specialCommandMatch.Length);
                         return true;
@@ -311,7 +351,7 @@ namespace FressClient
                 return false;
             }
 
-            while (ParseCommand());
+            while (ParseCommand()) ;
         }
 
         //public Scripting Scripting;
@@ -448,6 +488,8 @@ namespace FressClient
 
         private RenderWindow MainWindow { get; set; }
 
+        private Point _dpi = new Point(1, 1);
+
         private void Run(string[] args)
         {
             if (args.Length < 2)
@@ -461,6 +503,10 @@ namespace FressClient
             CharWidth = Font.GetGlyph('a', FontSize, false, 0).Advance;
             CharHeight = Font.GetLineSpacing(FontSize);
 
+            _dpi = GetSystemDpi();
+            _dpi.X /= 96;
+            _dpi.Y /= 96;
+
             MainWindow = new RenderWindow(new VideoMode((uint)(CharWidth * 65 * 2), (uint)(CharHeight * 43)), "FRESS");
             RenderWindow window = MainWindow;
             window.KeyPressed += WindowOnKeyPressed;
@@ -472,9 +518,18 @@ namespace FressClient
             window.Resized += WindowOnResized;
             window.Closed += WindowOnClosed;
 
+            var view = window.GetView();
+            view.Size = new Vector2f(view.Size.X * _dpi.X, view.Size.Y * _dpi.Y);
+
             RenderWindow commandWindow = new RenderWindow(new VideoMode(1085, 205), "Commands");
             commandWindow.Resized += WindowOnResized;
             commandWindow.MouseButtonPressed += CommandWindowOnMouseButtonReleased;
+
+            view = commandWindow.GetView();
+            view.Size = new Vector2f(view.Size.X * _dpi.X, view.Size.Y * _dpi.Y);
+
+            commandWindow.Position = new Vector2i(0, 0);
+            window.Position = new Vector2i(200, (int)commandWindow.Size.Y + 40);
 
             CommandBuffer = new Buffer(new Vector2i(65, 1)) { Position = new Vector2f(0, CharHeight), DisplayCursor = true, DisableFormatting = true };
             ErrorBuffer = new Buffer(new Vector2i(65, 1)) { Position = new Vector2f(CharWidth * 65, CharHeight) };
