@@ -384,6 +384,7 @@ namespace FressClient
 
                 string s = "`";
                 uint temp = (uint) index;
+                temp &= 0xfe; //Should always be even??
                 for (int i = 0; i < 4; ++i)
                 {
                     char c = translation[(int)(temp & 0xf)];
