@@ -596,7 +596,7 @@ namespace FressClient
             private void Window_MouseWheelScrolled(object sender, MouseWheelScrollEventArgs e)
         {
             TimeSpan interval = DateTime.Now - last_time;
-            if (interval.TotalMilliseconds < 200)
+            if (interval.TotalMilliseconds < 500)
             {
                 return;
             }
@@ -607,10 +607,6 @@ namespace FressClient
                     new Vector2f(buffer.CharacterSize.X * CharWidth, buffer.CharacterSize.Y * CharHeight));
                 if (bounds.Contains(e.X, e.Y))
                 {
-                    if (CurrentBufferIndex != index)
-                    {
-                        SubmitCommand("cw " + (index + 1));
-                    }
                     int val = ((int)(-e.Delta * 8));
                     if (val < -12) {
                         val = -12;
@@ -621,6 +617,15 @@ namespace FressClient
                     }
                     if (val != 0)
                     {
+                        if (CurrentBufferIndex != index)
+                        {
+                            SubmitCommand("cw " + (index + 1));
+                            // Also important that we do this only for unignored scroll events
+                            // track the current window actively, as fress may not give us the news for a while. otherwise we will keep
+                            // issuing commands when it's not necessary. Anything that happens at the fress end will see the current window as this
+                            // one, since the commands are executed in order.
+                            CurrentBufferIndex = index;
+                        }
                         SubmitCommand(val.ToString());
                     }
 
