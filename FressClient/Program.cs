@@ -16,15 +16,6 @@ namespace FressClient
     class Program
     {
 
-        [DllImport("gdi32.dll", CharSet = CharSet.Auto, SetLastError = true, ExactSpelling = true)]
-        public static extern int GetDeviceCaps(IntPtr hDC, int nIndex);
-
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetDC(IntPtr hWnd);
-
-        [DllImport("user32.dll")]
-        private static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
-
         public enum DeviceCap
         {
             /// <summary>
@@ -46,14 +37,7 @@ namespace FressClient
 
         public static float GetSystemScaling()
         {
-            IntPtr hDC = GetDC(IntPtr.Zero);
-
-            float logicalHeight = GetDeviceCaps(hDC, (int)DeviceCap.VERTRES);
-            float physicalHeight = GetDeviceCaps(hDC, (int)DeviceCap.DESKTOPVERTRES);
-            float dpi = GetDeviceCaps(hDC, (int) DeviceCap.LOGPIXELSY) / 96.0f;
-            ReleaseDC(IntPtr.Zero, hDC);
-
-            return physicalHeight * dpi / logicalHeight;
+            return 1.5f;
         }
 
         static void Main(string[] args)
