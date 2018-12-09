@@ -343,13 +343,17 @@ namespace FressClient
 
         //public Scripting Scripting;
         public TelnetSocket Socket;
+        private DateTime last_time = DateTime.Now;
         private void SubmitCommand(string command)
         {
+            TimeSpan interval = DateTime.Now - last_time;
+            if (interval.TotalMilliseconds < 400)
+                System.Threading.Thread.Sleep(interval);
+
             Console.WriteLine($"Sent command: {command}");
             //Scripting.Send(command + "\r\n");
             Socket.Write(command + "\r\n");
 
-            System.Threading.Thread.Sleep(30);
         }
 
         private void OnDataAvailable()
@@ -587,9 +591,15 @@ namespace FressClient
             Debug.WriteLine($"{e.Width}, {e.Height}");
             (sender as RenderWindow).SetView(new View(new FloatRect(0, 0, e.Width, e.Height)));
         }
+        private DateTime LastScrolled = DateTime.Now;
 
-        private void Window_MouseWheelScrolled(object sender, MouseWheelScrollEventArgs e)
+            private void Window_MouseWheelScrolled(object sender, MouseWheelScrollEventArgs e)
         {
+            TimeSpan interval = DateTime.Now - last_time;
+            if (interval.TotalMilliseconds < 200)
+            {
+                return;
+            }
             for (int index = 0; index < Buffers.Length; index++)
             {
                 Buffer buffer = Buffers[index];
@@ -601,7 +611,7 @@ namespace FressClient
                     {
                         SubmitCommand("cw " + (index + 1));
                     }
-                    int val = ((int)(-e.Delta * 12));
+                    int val = ((int)(-e.Delta * 8));
                     if (val < -12) {
                         val = -12;
                     }
@@ -683,12 +693,9 @@ namespace FressClient
                     {
                         buffer.HandleMouseReleased(e.X, e.Y, e.Button);
                     }
-                    else 
-
                     buffer.MouseReleased();
                     break;
                 }
-                buffer.MouseReleased();
             }
         }
 
