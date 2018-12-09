@@ -246,9 +246,10 @@ namespace FressClient
             }
         }
 
-        private Regex _commandRegex = new Regex(@"^ ? ?\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?<op1>\d)?(?<op2>\d)?\\", RegexOptions.Multiline);
-        private Regex _commandWithTextRegex = new Regex(@"^ ? ?\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?<op1>\d)?(?<op2>\d)? (?<data>.*?)\|", RegexOptions.Multiline | RegexOptions.Singleline);
-        private Regex _specialCommandRegex = new Regex(@"^ ? ?\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d) (?<data>.*?)\n", RegexOptions.Multiline | RegexOptions.Singleline);
+        private Regex _commandRegex = new Regex(@"^ *\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?<op1>\d)?(?<op2>\d)?\\", RegexOptions.Multiline | RegexOptions.Singleline);
+        private Regex _commandWithTextRegex = new Regex(@"^ *\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?<op1>\d)?(?<op2>\d)? (?<data>.*?)\|", RegexOptions.Multiline | RegexOptions.Singleline);
+        private Regex _specialCommandRegex = new Regex(@"^ *\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d) (?<data>.*?)\n", RegexOptions.Multiline | RegexOptions.Singleline);
+        private Regex _residueRegex = new Regex(@"^(?<junk>[^\\]+)\\(?<data>.*)\n", RegexOptions.Multiline | RegexOptions.Singleline);
         private string _responseBuffer = "";
 
         private void HandleResponse(string response)
@@ -334,7 +335,16 @@ namespace FressClient
                         return true;
                     }
                 }
-                Console.Write(_responseBuffer);
+                Match residueMatch = _residueRegex.Match(_responseBuffer);
+                if (residueMatch.Success)
+                {
+                        Console.Write("junk: ");
+                        Console.Write(residueMatch.Groups["junk"].Captures[0].Value);
+                    _responseBuffer = "\\" + residueMatch.Groups["data"].Captures[0].Value;
+                     return true;
+                }
+                Console.Write("leftovers: ");
+                Console.WriteLine(_responseBuffer);
                 return false;
             }
 
