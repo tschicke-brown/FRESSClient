@@ -359,6 +359,7 @@ namespace FressClient
 
             EndIndex = index;
             SendText(button);
+            MouseReleased();
         }
 
         public void MouseReleased()
