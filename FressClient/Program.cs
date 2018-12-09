@@ -717,7 +717,7 @@ namespace FressClient
         private void Window_TextEntered(object sender, TextEventArgs e)
         {
             ErrorBuffer.BufferText = "";
-            if (e.Unicode == "\r")
+            if (e.Unicode == "\r" || e.Unicode=="\n")
             {
                 string command = CommandBuffer.BufferText;
                 CommandBuffer.BufferText = "";
