@@ -47,8 +47,8 @@ namespace FressClient
         }
 
         public static Font Font;
-        public static readonly uint FontSize = 18;
-        public static readonly uint MenuFontSize = 14;
+        public static readonly uint FontSize = 30;
+        public static readonly uint MenuFontSize = 30;
 
         public Buffer CommandBuffer, ErrorBuffer;
         public Buffer[] Buffers;
@@ -363,7 +363,7 @@ namespace FressClient
 
         private Button AddButton(string name, string command)
         {
-            Button button = new Button(name) {Size = new Vector2f(170, 15)};
+            Button button = new Button(name) {Size = new Vector2f(CharWidth*20 + 10, CharHeight+20)};
             button.Tapped += b =>
             {
                 CommandBuffer.Append(command);
@@ -447,10 +447,10 @@ namespace FressClient
                 ("", structure2),
             };
 
-            int xOff = 5;
+            int xOff = 10;
             foreach ((string, (string, string)[]) menu in menus)
             {
-                int yOff = 5;
+                int yOff = 10;
                 Text header = new Text(menu.Item1, Font, MenuFontSize)
                 {
                     Position = new Vector2f(xOff, yOff),
@@ -459,13 +459,13 @@ namespace FressClient
                 Buttons.Add(header);
                 foreach ((string, string) menuItem in menu.Item2)
                 {
-                    yOff += 20;
+                    yOff += 20 +(int)CharHeight;
                     Button button = AddButton(menuItem.Item1, menuItem.Item2);
                     button.Position = new Vector2f(xOff, yOff);
                     Buttons.Add(button);
                 }
 
-                xOff += 180;
+                xOff += (int)(CharWidth * 20+ 20);
             }
         }
 
