@@ -10,13 +10,13 @@
 
   <ItemGroup>
     <Reference Include="sfml-graphics">
-      <HintPath>..\..\..\..\Downloads\SFML.Net-2.4\SFML.Net-2.4\src\Graphics\bin\_WINDOWS_\netstandard2.0\sfml-graphics.dll</HintPath>
+      <HintPath>..\..\..\..\Downloads\SFML.Net-2.4\SFML.Net-2.4\src\Graphics\bin\Debug\netstandard2.0\sfml-graphics.dll</HintPath>
     </Reference>
     <Reference Include="sfml-system">
-      <HintPath>..\..\..\..\Downloads\SFML.Net-2.4\SFML.Net-2.4\src\Graphics\bin\_WINDOWS_\netstandard2.0\sfml-system.dll</HintPath>
+      <HintPath>..\..\..\..\Downloads\SFML.Net-2.4\SFML.Net-2.4\src\Graphics\bin\Debug\netstandard2.0\sfml-system.dll</HintPath>
     </Reference>
     <Reference Include="sfml-window">
-      <HintPath>..\..\..\..\Downloads\SFML.Net-2.4\SFML.Net-2.4\src\Graphics\bin\_WINDOWS_\netstandard2.0\sfml-window.dll</HintPath>
+      <HintPath>..\..\..\..\Downloads\SFML.Net-2.4\SFML.Net-2.4\src\Graphics\bin\Debug\netstandard2.0\sfml-window.dll</HintPath>
     </Reference>
   </ItemGroup>
 

@@ -154,6 +154,7 @@ namespace FressClient
 
                         i += 3;
                         start = i;
+                        openItalicIndex = -2;
                         continue;
                     }
 
@@ -168,6 +169,7 @@ namespace FressClient
 
                         i += 3;
                         start = i;
+                        openBoldIndex = -2;
                         continue;
                     }
 
@@ -181,6 +183,7 @@ namespace FressClient
                         initialStyle = 0;
                         i += 2;
                         start = i;
+                        closeIndex = -2;
                         continue;
                     }
 
