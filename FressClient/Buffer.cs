@@ -379,15 +379,16 @@ namespace FressClient
                 return;
             }
 
-            string translation = "0123456789[]*_;\"";
+            string translation = "0123456789!$*_;?";
             string GetLP(int index)
             {
+                index = Math.Min(Math.Max(index, 1), BufferText.Length - 1);
                 Console.WriteLine("Index: " + index);
-                Console.WriteLine("text: " + BufferText.Substring(Math.Max(index,0), Math.Min(8,BufferText.Length-index-1)));
+                Console.WriteLine("text: " + BufferText.Substring(index-1, Math.Min(8,BufferText.Length-index-1)));
 
                 string s = "`";
                 uint temp = (uint) index;
-                temp &= 0xfe; //Should always be even??
+                //temp &= 0xfe; //Should always be even??
                 for (int i = 0; i < 4; ++i)
                 {
                     char c = translation[(int)(temp & 0xf)];
