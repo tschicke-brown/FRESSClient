@@ -680,7 +680,7 @@ namespace FressClient
                     {
                         buffer.HandleMouseReleased(e.X, e.Y, e.Button);
                     }
-                    else if (e.Button == Mouse.Button.Middle)
+                    else if (e.Button == Mouse.Button.Middle || Keyboard.IsKeyPressed(Keyboard.Key.LShift) || Keyboard.IsKeyPressed(Keyboard.Key.RShift))
                     {
                         SubmitCommand("cw " + (index + 1));
                     }
