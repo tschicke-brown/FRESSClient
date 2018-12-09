@@ -676,14 +676,14 @@ namespace FressClient
                     new Vector2f(buffer.CharacterSize.X * CharWidth, buffer.CharacterSize.Y * CharHeight));
                 if (bounds.Contains(e.X, e.Y))
                 {
-                    if (e.Button == Mouse.Button.Left || e.Button == Mouse.Button.Right)
+                    if (e.Button == Mouse.Button.Middle || Keyboard.IsKeyPressed(Keyboard.Key.LShift) || Keyboard.IsKeyPressed(Keyboard.Key.RShift))
+                    {
+                        SubmitCommand("cw " + (index + 1));
+                    } else if (e.Button == Mouse.Button.Left || e.Button == Mouse.Button.Right)
                     {
                         buffer.HandleMouseReleased(e.X, e.Y, e.Button);
                     }
-                    else if (e.Button == Mouse.Button.Middle || Keyboard.IsKeyPressed(Keyboard.Key.LShift) || Keyboard.IsKeyPressed(Keyboard.Key.RShift))
-                    {
-                        SubmitCommand("cw " + (index + 1));
-                    }
+                    else 
 
                     buffer.MouseReleased();
                     break;
