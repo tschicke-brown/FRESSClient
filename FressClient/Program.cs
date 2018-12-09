@@ -379,16 +379,16 @@ namespace FressClient
                 ("Left end defer", "="),
                 ("Right end defer", "=?"),
                 ("Resolve deferred", "?/"),
-                ("Choose word", "-W"),
-                ("Choose line", "-L"),
-                ("Choose order", "-O"),
+                ("Choose word", "-w"),
+                ("Choose line", "-w"),
+                ("Choose order", "-o"),
             };
 
             (string, string)[] editing = new[]
             {
                 ("Delete text", "d"),
                 ("Insert text", "i"),
-                ("Insert annotation", "ia"),
+                ("Insert Annotation", "ia"),
                 ("Move text", "m"),
                 ("Move from workspace", "mws"),
                 ("Move to label", "mt"),
@@ -397,37 +397,37 @@ namespace FressClient
 
             (string, string)[] viewing = new[]
             {
-                ("Change window", "cw/"),
-                ("Display space", "ds/"),
-                ("Display viewspecs", "dv/"),
-                ("Set viewspaces", "sv/"),
-                ("Set keyword display rqst", "skd/"),
+                ("Change window", "cw "),
+                ("Display space", "ds "),
+                ("Display Viewspecs", "dv "),
+                ("Set Viewspecs", "sv/"),
+                ("Set Keyword Display rqst", "skd/"),
                 ("Query all files", "q/f"),
             };
 
             (string, string)[] structure = new[]
             {
-                ("Block trail continuous", "bt/"),
-                ("Block trail discrete", "btd/"),
-                ("Insert block", "ib"),
-                ("Insert decimal block", "idb"),
-                ("Make decimal block", "mdb"),
-                ("Make decimal reference", "mdr"),
+                ("Block Trail continuous", "bt/"),
+                ("Block Trail Tiscrete", "btd/"),
+                ("Insert Block", "ib"),
+                ("Insert Decimal Block", "idb"),
+                ("Make Decimal Block", "mdb"),
+                ("Make Decimal Reference", "mdr"),
                 ("Insert Annotation", "ia"),
             };
             (string, string)[] structure2 = new[]{
                 ("Make annotation", "ma"),
-                ("Refer to annotation", "rta"),
-                ("Make jump", "mj"),
-                ("Make label", "ml"),
-                ("Make splice", "ms"),
+                ("Refer To Tnnotation", "rta"),
+                ("Make Tump", "mj"),
+                ("Make Tabel", "ml"),
+                ("Make Splice", "ms"),
                 ("Split editing area", "sa"),
             };
 
             (string, string)[] navigation = new[]
             {
-                ("Jump", "j"),
-                ("Locate", "l"),
+                ("Jump", "j/"),
+                ("Locate", "l/"),
                 ("Return", "r"),
                 ("Get label", "gl"),
                 ("Get decimal label", "gdl"),
