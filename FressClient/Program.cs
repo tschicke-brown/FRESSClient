@@ -348,12 +348,15 @@ namespace FressClient
         {
             TimeSpan interval = DateTime.Now - last_time;
             if (interval.TotalMilliseconds < 400)
+            {
+                OnDataAvailable();
                 System.Threading.Thread.Sleep(interval);
+            }
 
-            Console.WriteLine($"Sent command: {command}");
+
             //Scripting.Send(command + "\r\n");
             Socket.Write(command + "\r\n");
-
+            Console.WriteLine($"Sent command: {command}");
         }
 
         private void OnDataAvailable()
@@ -624,7 +627,7 @@ namespace FressClient
                             // track the current window actively, as fress may not give us the news for a while. otherwise we will keep
                             // issuing commands when it's not necessary. Anything that happens at the fress end will see the current window as this
                             // one, since the commands are executed in order.
-                            CurrentBufferIndex = index;
+                            HandleResponse("\\"+index+index+"40 scrolling\r\n");
                         }
                         SubmitCommand(val.ToString());
                     }
