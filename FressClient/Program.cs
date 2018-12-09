@@ -37,7 +37,7 @@ namespace FressClient
 
         public static float GetSystemScaling()
         {
-            return 1.5f;
+            return 1f;
         }
 
         static void Main(string[] args)
