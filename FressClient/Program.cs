@@ -611,7 +611,7 @@ namespace FressClient
                     }
                     if (val != 0)
                     {
-                        SubmitCommand((-e.Delta * 12).ToString());
+                        SubmitCommand(val.ToString());
                     }
 
                     break;
