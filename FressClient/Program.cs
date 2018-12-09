@@ -16,15 +16,6 @@ namespace FressClient
     class Program
     {
 
-        [DllImport("gdi32.dll", CharSet = CharSet.Auto, SetLastError = true, ExactSpelling = true)]
-        public static extern int GetDeviceCaps(IntPtr hDC, int nIndex);
-
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetDC(IntPtr hWnd);
-
-        [DllImport("user32.dll")]
-        private static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
-
         public enum DeviceCap
         {
             /// <summary>
@@ -46,14 +37,7 @@ namespace FressClient
 
         public static float GetSystemScaling()
         {
-            IntPtr hDC = GetDC(IntPtr.Zero);
-
-            float logicalHeight = GetDeviceCaps(hDC, (int)DeviceCap.VERTRES);
-            float physicalHeight = GetDeviceCaps(hDC, (int)DeviceCap.DESKTOPVERTRES);
-            float dpi = GetDeviceCaps(hDC, (int) DeviceCap.LOGPIXELSY) / 96.0f;
-            ReleaseDC(IntPtr.Zero, hDC);
-
-            return physicalHeight * dpi / logicalHeight;
+            return 1f;
         }
 
         static void Main(string[] args)
@@ -63,8 +47,8 @@ namespace FressClient
         }
 
         public static Font Font;
-        public static readonly uint FontSize = 18;
-        public static readonly uint MenuFontSize = 14;
+        public static readonly uint FontSize = 30;
+        public static readonly uint MenuFontSize = 30;
 
         public Buffer CommandBuffer, ErrorBuffer;
         public Buffer[] Buffers;
@@ -350,7 +334,7 @@ namespace FressClient
                         return true;
                     }
                 }
-
+                Console.Write(_responseBuffer);
                 return false;
             }
 
@@ -365,11 +349,7 @@ namespace FressClient
             //Scripting.Send(command + "\r\n");
             Socket.Write(command + "\r\n");
 
-            //string res = Scripting.ReadUntil(ScriptEvent.Timeout);
-            //if (res != null)
-            //{
-            //    ParseResponse(res);
-            //}
+            System.Threading.Thread.Sleep(30);
         }
 
         private void OnDataAvailable()
@@ -383,7 +363,7 @@ namespace FressClient
 
         private Button AddButton(string name, string command)
         {
-            Button button = new Button(name) {Size = new Vector2f(170, 15)};
+            Button button = new Button(name) {Size = new Vector2f(CharWidth*20 + 10, CharHeight+20)};
             button.Tapped += b =>
             {
                 CommandBuffer.Append(command);
@@ -399,16 +379,16 @@ namespace FressClient
                 ("Left end defer", "="),
                 ("Right end defer", "=?"),
                 ("Resolve deferred", "?/"),
-                ("Choose word", "-W"),
-                ("Choose line", "-L"),
-                ("Choose order", "-O"),
+                ("Choose word", "-w"),
+                ("Choose line", "-w"),
+                ("Choose order", "-o"),
             };
 
             (string, string)[] editing = new[]
             {
                 ("Delete text", "d"),
                 ("Insert text", "i"),
-                ("Insert annotation", "ia"),
+                ("Insert Annotation", "ia"),
                 ("Move text", "m"),
                 ("Move from workspace", "mws"),
                 ("Move to label", "mt"),
@@ -417,37 +397,37 @@ namespace FressClient
 
             (string, string)[] viewing = new[]
             {
-                ("Change window", "cw/"),
-                ("Display space", "ds/"),
-                ("Display viewspecs", "dv/"),
-                ("Set viewspaces", "sv/"),
-                ("Set keyword display rqst", "skd/"),
+                ("Change window", "cw "),
+                ("Display space", "ds "),
+                ("Display Viewspecs", "dv "),
+                ("Set Viewspecs", "sv/"),
+                ("Set Keyword Display rqst", "skd/"),
                 ("Query all files", "q/f"),
             };
 
             (string, string)[] structure = new[]
             {
-                ("Block trail continuous", "bt/"),
-                ("Block trail discrete", "btd/"),
-                ("Insert block", "ib"),
-                ("Insert decimal block", "idb"),
-                ("Make decimal block", "mdb"),
-                ("Make decimal reference", "mdr"),
+                ("Block Trail continuous", "bt/"),
+                ("Block Trail Tiscrete", "btd/"),
+                ("Insert Block", "ib"),
+                ("Insert Decimal Block", "idb"),
+                ("Make Decimal Block", "mdb"),
+                ("Make Decimal Reference", "mdr"),
                 ("Insert Annotation", "ia"),
             };
             (string, string)[] structure2 = new[]{
                 ("Make annotation", "ma"),
-                ("Refer to annotation", "rta"),
-                ("Make jump", "mj"),
-                ("Make label", "ml"),
-                ("Make splice", "ms"),
+                ("Refer To Tnnotation", "rta"),
+                ("Make Tump", "mj"),
+                ("Make Tabel", "ml"),
+                ("Make Splice", "ms"),
                 ("Split editing area", "sa"),
             };
 
             (string, string)[] navigation = new[]
             {
-                ("Jump", "j"),
-                ("Locate", "l"),
+                ("Jump", "j/"),
+                ("Locate", "l/"),
                 ("Return", "r"),
                 ("Get label", "gl"),
                 ("Get decimal label", "gdl"),
@@ -467,10 +447,10 @@ namespace FressClient
                 ("", structure2),
             };
 
-            int xOff = 5;
+            int xOff = 10;
             foreach ((string, (string, string)[]) menu in menus)
             {
-                int yOff = 5;
+                int yOff = 10;
                 Text header = new Text(menu.Item1, Font, MenuFontSize)
                 {
                     Position = new Vector2f(xOff, yOff),
@@ -479,13 +459,13 @@ namespace FressClient
                 Buttons.Add(header);
                 foreach ((string, string) menuItem in menu.Item2)
                 {
-                    yOff += 20;
+                    yOff += 20 +(int)CharHeight;
                     Button button = AddButton(menuItem.Item1, menuItem.Item2);
                     button.Position = new Vector2f(xOff, yOff);
                     Buttons.Add(button);
                 }
 
-                xOff += 180;
+                xOff += (int)(CharWidth * 20+ 20);
             }
         }
 
@@ -621,8 +601,19 @@ namespace FressClient
                     {
                         SubmitCommand("cw " + (index + 1));
                     }
+                    int val = ((int)(-e.Delta * 12));
+                    if (val < -12) {
+                        val = -12;
+                    }
+                    if (val > 12)
+                    {
+                        val = 12;
+                    }
+                    if (val != 0)
+                    {
+                        SubmitCommand(val.ToString());
+                    }
 
-                    SubmitCommand((-e.Delta * 12).ToString());
                     break;
                 }
             }
@@ -685,14 +676,14 @@ namespace FressClient
                     new Vector2f(buffer.CharacterSize.X * CharWidth, buffer.CharacterSize.Y * CharHeight));
                 if (bounds.Contains(e.X, e.Y))
                 {
-                    if (e.Button == Mouse.Button.Left || e.Button == Mouse.Button.Right)
+                    if (e.Button == Mouse.Button.Middle || Keyboard.IsKeyPressed(Keyboard.Key.LShift) || Keyboard.IsKeyPressed(Keyboard.Key.RShift))
+                    {
+                        SubmitCommand("cw " + (index + 1));
+                    } else if (e.Button == Mouse.Button.Left || e.Button == Mouse.Button.Right)
                     {
                         buffer.HandleMouseReleased(e.X, e.Y, e.Button);
                     }
-                    else if (e.Button == Mouse.Button.Middle)
-                    {
-                        SubmitCommand("cw " + (index + 1));
-                    }
+                    else 
 
                     buffer.MouseReleased();
                     break;
@@ -716,7 +707,9 @@ namespace FressClient
                     {
                         buffer.MouseReleased();
                     }
-
+                    break;
+                case Keyboard.Key.Delete:
+                    CommandBuffer.BufferText = "";
                     break;
                 default:
                     break;
@@ -726,7 +719,7 @@ namespace FressClient
         private void Window_TextEntered(object sender, TextEventArgs e)
         {
             ErrorBuffer.BufferText = "";
-            if (e.Unicode == "\r")
+            if (e.Unicode == "\r" || e.Unicode=="\n")
             {
                 string command = CommandBuffer.BufferText;
                 CommandBuffer.BufferText = "";

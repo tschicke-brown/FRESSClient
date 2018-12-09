@@ -108,6 +108,7 @@ namespace FressClient
                             DataAvailable?.Invoke();
                         }
                     }
+                    await Task.Delay(50);
                 }
             });
         }

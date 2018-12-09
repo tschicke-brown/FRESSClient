@@ -359,6 +359,7 @@ namespace FressClient
 
             EndIndex = index;
             SendText(button);
+            MouseReleased();
         }
 
         public void MouseReleased()
@@ -378,6 +379,9 @@ namespace FressClient
             string translation = "0123456789[]*_;\"";
             string GetLP(int index)
             {
+                Console.WriteLine("Index: " + index);
+                Console.WriteLine("text: " + BufferText.Substring(Math.Max(index,0), Math.Min(8,BufferText.Length-index-1)));
+
                 string s = "`";
                 uint temp = (uint) index;
                 for (int i = 0; i < 4; ++i)
@@ -396,23 +400,14 @@ namespace FressClient
             startI -= 2 * BufferText.Substring(0, startI).Count(c => c == '\n') + 1;
             int endI = Math.Max(StartIndex, EndIndex);
             endI -= 2 * BufferText.Substring(0, endI).Count(c => c == '\n') + 1;
-            const int numChars = 15;
-            string str;
             if (StartIndex == EndIndex)
             {
-                //int end = Math.Min(BufferText.Length, startI + numChars);
-                //int start = end - numChars;
-                //str = BufferText.Substring(start, numChars);
-                str = GetLP(startI);
+                TextClicked?.Invoke(GetLP(endI), button);
             }
-            //else if (endI + 1 - startI < numChars)
-            //{
-            //    int diff = endI + 1 - startI;
-            //    str = BufferText.Substring(startI, diff);
-            //}
             else
             {
-                str = GetLP(startI) + GetLP(endI);
+                TextClicked?.Invoke(GetLP(startI) +GetLP(endI), Mouse.Button.Left);
+
                 //string startString = BufferText.Substring(startI, numChars);
                 //int end = Math.Min(BufferText.Length, endI + numChars);
                 //int start = end - numChars;
@@ -421,7 +416,7 @@ namespace FressClient
                 //endString = r.Replace(endString, match => match.Value + ".").Trim();
                 //str = $"{startString}...{endString}";
             }
-            TextClicked?.Invoke(str, button);
+
         }
     }
 }
