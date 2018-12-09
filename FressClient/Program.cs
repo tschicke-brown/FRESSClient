@@ -334,7 +334,7 @@ namespace FressClient
                         return true;
                     }
                 }
-
+                Console.Write(_responseBuffer);
                 return false;
             }
 
@@ -349,11 +349,7 @@ namespace FressClient
             //Scripting.Send(command + "\r\n");
             Socket.Write(command + "\r\n");
 
-            //string res = Scripting.ReadUntil(ScriptEvent.Timeout);
-            //if (res != null)
-            //{
-            //    ParseResponse(res);
-            //}
+            System.Threading.Thread.Sleep(30);
         }
 
         private void OnDataAvailable()
