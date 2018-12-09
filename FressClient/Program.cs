@@ -601,8 +601,19 @@ namespace FressClient
                     {
                         SubmitCommand("cw " + (index + 1));
                     }
+                    int val = ((int)(-e.Delta * 12));
+                    if (val < -12) {
+                        val = -12;
+                    }
+                    if (val > 12)
+                    {
+                        val = 12;
+                    }
+                    if (val != 0)
+                    {
+                        SubmitCommand((-e.Delta * 12).ToString());
+                    }
 
-                    SubmitCommand((-e.Delta * 12).ToString());
                     break;
                 }
             }
