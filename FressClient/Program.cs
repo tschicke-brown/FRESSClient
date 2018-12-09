@@ -707,7 +707,9 @@ namespace FressClient
                     {
                         buffer.MouseReleased();
                     }
-
+                    break;
+                case Keyboard.Key.Delete:
+                    CommandBuffer.BufferText = "";
                     break;
                 default:
                     break;
