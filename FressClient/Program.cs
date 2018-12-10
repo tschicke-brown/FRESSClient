@@ -593,9 +593,8 @@ namespace FressClient
                 {
                     commandWindow.Draw(rectangleShape);
                 }
-
-                commandWindow.Display();
                 window.Display();
+                commandWindow.Display();
             }
         }
 
@@ -609,7 +608,7 @@ namespace FressClient
             private void Window_MouseWheelScrolled(object sender, MouseWheelScrollEventArgs e)
         {
             TimeSpan interval = DateTime.Now - last_time;
-            if (interval.TotalMilliseconds < 500)
+            if (interval.TotalMilliseconds < 650)
             {
                 return;
             }
@@ -695,6 +694,7 @@ namespace FressClient
             }
         }
 
+        private bool _shifted = false;
         private void Window_MouseButtonReleased(object sender, MouseButtonEventArgs e)
         {
             for (int index = 0; index < Buffers.Length; index++)
@@ -704,7 +704,7 @@ namespace FressClient
                     new Vector2f(buffer.CharacterSize.X * CharWidth, buffer.CharacterSize.Y * CharHeight));
                 if (bounds.Contains(e.X, e.Y))
                 {
-                    if (e.Button == Mouse.Button.Middle || Keyboard.IsKeyPressed(Keyboard.Key.LShift) || Keyboard.IsKeyPressed(Keyboard.Key.RShift))
+                    if (e.Button == Mouse.Button.Middle || _shifted)
                     {
                         SubmitCommand("cw " + (index + 1));
                     } else if (e.Button == Mouse.Button.Left || e.Button == Mouse.Button.Right)
@@ -739,6 +739,7 @@ namespace FressClient
                 default:
                     break;
             }
+            _shifted = Keyboard.IsKeyPressed(Keyboard.Key.LShift) || Keyboard.IsKeyPressed(Keyboard.Key.RShift);
         }
 
         private void Window_TextEntered(object sender, TextEventArgs e)
