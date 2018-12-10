@@ -136,15 +136,27 @@ namespace FressClient
                 List<(string, Text.Styles)> strings = new List<(string, Text.Styles)>();
                 int openItalicIndex = -2, openBoldIndex = -2;
                 int closeIndex = -2;
-                int structureIndex = -2;
                 int start = 0;
                 for (int i = 0; i < str.Length;)
                 {
                     if (openItalicIndex == -2) openItalicIndex = str.IndexOf("!(1", i);
                     if (openBoldIndex == -2) openBoldIndex = str.IndexOf("!(0", i);
-                    if (structureIndex == -2) structureIndex = str.IndexOf("%", i);
                     if (closeIndex == -2) closeIndex = str.IndexOf("!)", i);
 
+                    if (str.Substring(i,1) == "%" && str.Length > i+1)
+                    {
+                        if (start != i)
+                        {
+                            string segment = str.Substring(start, i - start);
+                            strings.Add((segment, initialStyle));
+                        }
+                        string seg2 = str.Substring(i, 2);
+                        strings.Add((seg2, Text.Styles.Bold));
+                        initialStyle = 0;
+                        i += 2;
+                        start = i; 
+                        continue;
+                    }
                     if (i == openItalicIndex)
                     {
                         if (start != i)
@@ -157,21 +169,6 @@ namespace FressClient
                         i += 3;
                         start = i;
                         openItalicIndex = -2;
-                        continue;
-                    }
-
-                    if (i == structureIndex)
-                    {
-                        if (start != i)
-                        {
-                            string segment = str.Substring(i,2);
-                            strings.Add((segment, Text.Styles.Bold));
-                        }
-                        initialStyle = Text.Styles.Italic;
-
-                        i += 2;
-                        start = i;
-                        structureIndex = -2;
                         continue;
                     }
 
