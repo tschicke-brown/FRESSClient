@@ -275,7 +275,9 @@ namespace FressClient
                 }
                 else if (!flag1.HasFlag(Flag1.TxBinaryData) && text != null)
                 {
-                    Buffers[window - 1].BufferText = text.Replace("\r", "");
+                    if (window <= Buffers.Length)
+                        Buffers[window - 1].BufferText = text.Replace("\r", "");
+                    else Console.WriteLine($"Fress talking to nonexistnet window {window}. Contents: {text}");
                 }
             }
             bool ParseCommand()
