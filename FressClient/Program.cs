@@ -3,11 +3,14 @@ using SFML.System;
 using SFML.Window;
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using Color = SFML.Graphics.Color;
+using System.Threading.Tasks;
+
 
 namespace FressClient
 {
@@ -88,6 +91,7 @@ namespace FressClient
 
         public static float CharWidth { get; private set; }
         public static float CharHeight { get; private set; }
+        public static int MillisecondEventThrottle = 200;
 
         class Sender
         {
@@ -244,10 +248,11 @@ namespace FressClient
             }
         }
 
-        private Regex _commandRegex = new Regex(@"^ *\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?<op1>\d)?(?<op2>\d)?\\", RegexOptions.Multiline | RegexOptions.Singleline);
-        private Regex _commandWithTextRegex = new Regex(@"^ *\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?<op1>\d)?(?<op2>\d)? (?<data>.*?)\|", RegexOptions.Multiline | RegexOptions.Singleline);
-        private Regex _specialCommandRegex = new Regex(@"^ *\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d) (?<data>.*?)\n", RegexOptions.Multiline | RegexOptions.Singleline);
-        private Regex _residueRegex = new Regex(@"^(?<junk>[^\\]+)\\(?<data>.*)\n", RegexOptions.Multiline | RegexOptions.Singleline);
+        private Regex _commandRegex = new Regex(@"^\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?<op1>\d)(?<op2>\d)\\", RegexOptions.Singleline);
+        private Regex _commandWithTextRegex = new Regex(@"^\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?<data>(?> [^\|][^\\]*\r\n)*) \|", RegexOptions.Singleline);
+        private Regex _specialCommandRegex = new Regex(@"^\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d) (?<data>.*?)\r\n  ",  RegexOptions.Singleline);
+        private Regex _residueRegex = new Regex(@"^(?<junk>[^\\]+)(?<data>\\.*)?$", RegexOptions.Singleline);
+        private Regex _badcommand = new Regex(@"^(?<junk>\\[^\\]+)(?<data>\\.*)$", RegexOptions.Singleline);
         private string _responseBuffer = "";
 
         private void HandleResponse(string response)
@@ -305,15 +310,9 @@ namespace FressClient
                     int currentWindow = commandTextMatch.Groups["curWinNum"].Captures[0].Value[0] - '0';
                     Flag1 flag1 = (Flag1)commandTextMatch.Groups["flag1"].Captures[0].Value[0] - '0';
                     Flag2 flag2 = (Flag2)commandTextMatch.Groups["flag2"].Captures[0].Value[0] - '0';
-                    int? windowConfig = null;
-                    Group windowConfigMatch = commandTextMatch.Groups["op1"];
-                    if (windowConfigMatch.Success)
-                    {
-                        windowConfig = windowConfigMatch.Captures[0].Value[0] - '0';
-                    }
 
                     string text = commandTextMatch.Groups["data"].Captures[0].Value;
-                    HandleCommand(window, currentWindow, flag1, flag2, windowConfig, text);
+                    HandleCommand(window, currentWindow, flag1, flag2, null, text);
                     _responseBuffer = _responseBuffer.Substring(commandTextMatch.Index + commandTextMatch.Length);
                     return true;
                 }
@@ -335,41 +334,69 @@ namespace FressClient
                         return true;
                     }
                 }
-                Match residueMatch = _residueRegex.Match(_responseBuffer);
-                if (residueMatch.Success)
-                {
-                        Console.Write("junk: ");
-                        Console.Write(residueMatch.Groups["junk"].Captures[0].Value);
-                    _responseBuffer = "\\" + residueMatch.Groups["data"].Captures[0].Value;
-                     return true;
-                }
-                Console.Write("leftovers: ");
-                Console.WriteLine(_responseBuffer);
+                // Console.Write("leftovers: ");
+                // Console.WriteLine(_responseBuffer);
                 return false;
             }
 
             while (ParseCommand()) ;
+            Match residueMatch = _residueRegex.Match(_responseBuffer);
+            if (residueMatch.Success)
+            {
+                Console.WriteLine("Non-FRESS output: ");
+                Console.WriteLine(residueMatch.Groups["junk"].Captures[0].Value);
+                if (residueMatch.Groups["data"].Captures.Count > 0)
+                    _responseBuffer = residueMatch.Groups["data"].Captures[0].Value;
+                else _responseBuffer = "";
+            }
+            else
+            {
+                Match bad = _badcommand.Match(_responseBuffer);
+                if (bad.Success && bad.Length != 0)
+                {
+                    Console.WriteLine("Bad FRESS Protocol or Non-FRESS output: ");
+                    Console.WriteLine(residueMatch.Groups["junk"].Captures[0].Value);
+                    _responseBuffer = residueMatch.Groups["data"].Captures[0].Value;
+                    Console.WriteLine("Remaining to process: ");
+                    Console.WriteLine(_responseBuffer);
+                }
+            }
+
         }
 
         //public Scripting Scripting;
         public TelnetSocket Socket;
-        private DateTime last_time = DateTime.Now;
+        private BlockingCollection<string> _commands = new BlockingCollection<string>(5);
         private void SubmitCommand(string command)
         {
-            TimeSpan interval = DateTime.Now - last_time;
-            if (interval.TotalMilliseconds < 400)
+            System.Threading.Thread.Yield();
+            _commands.Add(command);
+        }
+        private DateTime last_time = DateTime.Now;
+
+        private void StartSending()
+        {
+            Task.Factory.StartNew(async () =>
             {
-                OnDataAvailable();
-                System.Threading.Thread.Sleep(interval);
+                while (true)
+                {
+                    TimeSpan interval = DateTime.Now - last_time;
+                    if (interval.TotalMilliseconds < MillisecondEventThrottle)
+                    {
+                        await Task.Delay(MillisecondEventThrottle - (int)interval.TotalMilliseconds);
+                    }
+                    String command = _commands.Take();
+                    Socket.WriteCommand(command);
+                    Console.WriteLine($"Sent command: {command}");
+                    last_time = DateTime.Now;
+                    System.Threading.Thread.Yield();
+                    System.Threading.Thread.Yield();
+                }
             }
-
-
-            //Scripting.Send(command + "\r\n");
-            Socket.Write(command + "\r\n");
-            Console.WriteLine($"Sent command: {command}");
+            );
         }
 
-        private void OnDataAvailable()
+        private void HandleRemoteResponses()
         {
             string res = Socket.Read();
             if (res != null)
@@ -543,8 +570,7 @@ namespace FressClient
             string ip = args[0];
             int port = int.Parse(args[1]);
             Socket = new TelnetSocket(ip, port);
-            Socket.DataAvailable += OnDataAvailable;
-
+            StartSending();
             while (window.IsOpen)
             {
                 window.Clear(new Color(0, 0, 50));
@@ -566,6 +592,8 @@ namespace FressClient
                 }
                 window.Display();
                 commandWindow.Display();
+                HandleRemoteResponses();
+                System.Threading.Thread.Yield();
             }
         }
 
@@ -579,8 +607,9 @@ namespace FressClient
             private void Window_MouseWheelScrolled(object sender, MouseWheelScrollEventArgs e)
         {
             TimeSpan interval = DateTime.Now - last_time;
-            if (interval.TotalMilliseconds < 650)
+            if (interval.TotalMilliseconds < MillisecondEventThrottle)
             {
+                //System.Threading.Thread.Yield();
                 return;
             }
             for (int index = 0; index < Buffers.Length; index++)
@@ -590,7 +619,7 @@ namespace FressClient
                     new Vector2f(buffer.CharacterSize.X * CharWidth, buffer.CharacterSize.Y * CharHeight));
                 if (bounds.Contains(e.X, e.Y))
                 {
-                    int val = ((int)(-e.Delta * 8));
+                    int val = ((int)(-e.Delta * 12));
                     if (val < -12) {
                         val = -12;
                     }
