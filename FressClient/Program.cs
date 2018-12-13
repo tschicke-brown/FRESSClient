@@ -629,16 +629,7 @@ namespace FressClient
                     }
                     if (val != 0)
                     {
-                        if (CurrentBufferIndex != index)
-                        {
-                            SubmitCommand("cw " + (index + 1));
-                            // Also important that we do this only for unignored scroll events
-                            // track the current window actively, as fress may not give us the news for a while. otherwise we will keep
-                            // issuing commands when it's not necessary. Anything that happens at the fress end will see the current window as this
-                            // one, since the commands are executed in order.
-                            HandleResponse("\\"+index+index+"40 scrolling\r\n");
-                        }
-                        SubmitCommand(val.ToString());
+                        SubmitCommand("sc/"+val.ToString()+"/"+(index+1));
                     }
 
                     break;
