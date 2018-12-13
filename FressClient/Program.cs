@@ -47,7 +47,7 @@ namespace FressClient
         }
 
         public static Font Font;
-        public static readonly uint FontSize = 30;
+        public static readonly uint FontSize = 40;
         public static readonly uint MenuFontSize = 30;
 
         public Buffer CommandBuffer, ErrorBuffer;
