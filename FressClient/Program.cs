@@ -4,9 +4,7 @@ using SFML.Window;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using Color = SFML.Graphics.Color;
@@ -546,35 +544,6 @@ namespace FressClient
             int port = int.Parse(args[1]);
             Socket = new TelnetSocket(ip, port);
             Socket.DataAvailable += OnDataAvailable;
-            //Telnet server = new Telnet(ip, port);
-            //Scripting = server.StartScripting(new TerminalOptions() { TerminalType = TerminalType.Ansi, NewLineSequence = NewLineSequence.CRLF });
-            //Scripting scripting = Scripting;
-            //scripting.Timeout = 300;
-
-            //string res = scripting.ReadUntil(ScriptEvent.Timeout);
-            //Console.WriteLine(res);
-            //scripting.Send(ConsoleKey.Enter, 0);
-            //res = scripting.ReadUntil(ScriptEvent.Timeout);
-            //Console.WriteLine(res);
-            //if (res.StartsWith("CMS"))
-            //{
-
-            //}
-            //else
-            //{
-            //    scripting.Send("l dgd plasmate");
-            //    Console.WriteLine(scripting.ReadUntil(ScriptEvent.Timeout));
-            //    scripting.Send("b");
-            //    Console.WriteLine(scripting.ReadUntil(ScriptEvent.Timeout));
-            //    scripting.Send(ConsoleKey.Enter, 0);
-            //    res = scripting.ReadUntil(ScriptEvent.Timeout);
-            //    Console.WriteLine(res);
-            //    if (!res.StartsWith("CMS"))
-            //    {
-            //        //Console.WriteLine("Error connecting to 370");
-            //        //return;
-            //    }
-            //}
 
             while (window.IsOpen)
             {
