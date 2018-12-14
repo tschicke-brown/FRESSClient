@@ -280,7 +280,7 @@ namespace FressClient
                 {
                     if (window <= Buffers.Length)
                         Buffers[window - 1].BufferText = text.Replace("\r", "");
-                    else Console.WriteLine($"Fress talking to nonexistnet window {window}. Contents: {text}");
+                    else Console.WriteLine($"Fress talking to nonexistent window {window}. Contents: {text}");
                 }
             }
             bool ParseCommand()
@@ -354,8 +354,11 @@ namespace FressClient
                 Match bad = _badcommand.Match(_responseBuffer);
                 if (bad.Success && bad.Length != 0)
                 {
-                    Console.WriteLine("Bad FRESS Protocol or Non-FRESS output: ");
-                    Console.WriteLine(residueMatch.Groups["junk"].Captures[0].Value);
+                    if (residueMatch.Groups["junk"].Success)
+                    {
+                        Console.WriteLine("Bad FRESS Protocol or Non-FRESS output: ");
+                        Console.WriteLine(residueMatch.Groups["junk"].Captures[0].Value);
+                    }
                     _responseBuffer = residueMatch.Groups["data"].Captures[0].Value;
                     Console.WriteLine("Remaining to process: ");
                     Console.WriteLine(_responseBuffer);
