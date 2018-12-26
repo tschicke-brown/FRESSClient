@@ -308,6 +308,17 @@ namespace FressClient
             int col = 0;
             for (int i = 0; i < BufferText.Length; ++i)
             {
+                if (BufferText.ElementAt(i) == '!') {
+                    if (BufferText.IndexOf("!(1", i) == i || BufferText.IndexOf("!(0", i) == i)
+                    {
+                        i += 2;
+                        continue;
+                    } else if (BufferText.IndexOf("!)", i) == i)
+                    {
+                        i++;
+                        continue;
+                    }
+                }
                 if (col == CharacterSize.X || BufferText[i] == '\n')
                 {
                     if (x >= rect.Left && y >= rect.Top && y < rect.Top + rect.Height)
@@ -415,9 +426,9 @@ namespace FressClient
             }
 
             int startI = Math.Min(StartIndex, EndIndex);
-            startI -= 2 * BufferText.Substring(0, startI).Count(c => c == '\n') + 1;
+            startI -= BufferText.Substring(0, startI).Count(c => c == '\n');
             int endI = Math.Max(StartIndex, EndIndex);
-            endI -= 2 * BufferText.Substring(0, endI).Count(c => c == '\n') + 1;
+            endI -= BufferText.Substring(0, endI).Count(c => c == '\n');
             if (StartIndex == EndIndex)
             {
                 TextClicked?.Invoke(GetLP(endI), button);

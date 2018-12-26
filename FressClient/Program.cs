@@ -248,17 +248,15 @@ namespace FressClient
             }
         }
 
-        private Regex _commandRegex = new Regex(@"^\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?<op1>\d)(?<op2>\d)\\", RegexOptions.Singleline);
-        private Regex _commandWithTextRegex = new Regex(@"^\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?<data>(?> [^\|][^\\]*\r\n)*) \|", RegexOptions.Singleline);
-        private Regex _specialCommandRegex = new Regex(@"^\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d) (?<data>.*?)\r\n  ",  RegexOptions.Singleline);
+        private Regex _windowCommand = new Regex(@"^\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?<op1>\d)(?<op2>\d)", RegexOptions.Singleline);
+        private Regex _commandWithTextRegex = new Regex(@"^\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?>`(?<line>[^\r]*\r\n))*`\|", RegexOptions.Singleline);
+        private Regex _specialCommandRegex = new Regex(@"^\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)`(?<data>.*?)\r\n` ",  RegexOptions.Singleline);
         private Regex _residueRegex = new Regex(@"^(?<junk>[^\\]+)(?<data>\\.*)?$", RegexOptions.Singleline);
         private Regex _badcommand = new Regex(@"^(?<junk>\\[^\\]+)(?<data>\\.*)$", RegexOptions.Singleline);
         private string _responseBuffer = "";
 
         private void HandleResponse(string response)
         {
-            _responseBuffer += response;
-
             void HandleCommand(int window, int currentWindow, Flag1 flag1, Flag2 flag2, int? windowConfig, string text)
             {
                 if (flag1.HasFlag(Flag1.TxWindowDimensions))
@@ -285,7 +283,22 @@ namespace FressClient
             }
             bool ParseCommand()
             {
-                Match commandMatch = _commandRegex.Match(_responseBuffer);
+                if (_responseBuffer.Length == 0)
+                    return false;
+                Match residueMatch = _residueRegex.Match(_responseBuffer);
+                if (residueMatch.Success)
+                {
+                    Console.WriteLine("Non-FRESS output: ");
+                    Console.WriteLine(residueMatch.Groups["junk"].Captures[0].Value);
+                    if (residueMatch.Groups["data"].Captures.Count > 0)
+                    {
+                        _responseBuffer = residueMatch.Groups["data"].Captures[0].Value;
+                    }
+                    else { 
+                        _responseBuffer = "";
+                    }
+                }
+                Match commandMatch = _windowCommand.Match(_responseBuffer);
                 if (commandMatch.Success)
                 {
                     int window = commandMatch.Groups["winNum"].Captures[0].Value[0] - '0';
@@ -311,7 +324,15 @@ namespace FressClient
                     Flag1 flag1 = (Flag1)commandTextMatch.Groups["flag1"].Captures[0].Value[0] - '0';
                     Flag2 flag2 = (Flag2)commandTextMatch.Groups["flag2"].Captures[0].Value[0] - '0';
 
-                    string text = commandTextMatch.Groups["data"].Captures[0].Value;
+                    string text = "";
+                    if (commandTextMatch.Groups["line"].Success)
+                    {
+                        foreach(Capture cap in commandTextMatch.Groups["line"].Captures) {
+                            string line = cap.Value;
+                            //trim delimiters from matched string
+                            text = text + line.Substring(0, line.Length);
+                        }
+                    }
                     HandleCommand(window, currentWindow, flag1, flag2, null, text);
                     _responseBuffer = _responseBuffer.Substring(commandTextMatch.Index + commandTextMatch.Length);
                     return true;
@@ -334,36 +355,23 @@ namespace FressClient
                         return true;
                     }
                 }
-                // Console.Write("leftovers: ");
-                // Console.WriteLine(_responseBuffer);
-                return false;
-            }
-
-            while (ParseCommand()) ;
-            Match residueMatch = _residueRegex.Match(_responseBuffer);
-            if (residueMatch.Success)
-            {
-                Console.WriteLine("Non-FRESS output: ");
-                Console.WriteLine(residueMatch.Groups["junk"].Captures[0].Value);
-                if (residueMatch.Groups["data"].Captures.Count > 0)
-                    _responseBuffer = residueMatch.Groups["data"].Captures[0].Value;
-                else _responseBuffer = "";
-            }
-            else
-            {
                 Match bad = _badcommand.Match(_responseBuffer);
                 if (bad.Success && bad.Length != 0)
                 {
-                    if (residueMatch.Groups["junk"].Success)
+                    if (bad.Groups["junk"].Success)
                     {
                         Console.WriteLine("Bad FRESS Protocol or Non-FRESS output: ");
-                        Console.WriteLine(residueMatch.Groups["junk"].Captures[0].Value);
+                        Console.WriteLine(bad.Groups["junk"].Captures[0].Value);
                     }
-                    _responseBuffer = residueMatch.Groups["data"].Captures[0].Value;
+                    if (bad.Groups["data"].Success)
+                        _responseBuffer = bad.Groups["data"].Captures[0].Value;
                     Console.WriteLine("Remaining to process: ");
                     Console.WriteLine(_responseBuffer);
                 }
+                return false;
             }
+            _responseBuffer += response;
+            while (ParseCommand()) ;
 
         }
 
