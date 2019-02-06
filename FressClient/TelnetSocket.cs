@@ -202,6 +202,7 @@ namespace FressClient
             });
         }
 
+        private Encoding Latin1 = Encoding.GetEncoding("iso-8859-1");
 
         public string Read()
         {
@@ -212,7 +213,7 @@ namespace FressClient
             {
                 return null;
             }
-            string result = Encoding.ASCII.GetString(bytes, 0, bytes.Length);
+            string result = Latin1.GetString(bytes, 0, bytes.Length);
             //Console.WriteLine($"Returning {bytes.Length} bytes. '{result}'");
             return result;
         }
@@ -227,14 +228,14 @@ namespace FressClient
         public void WriteCommand(string buffer)
         {
             //Console.WriteLine($"Writing {buffer.Length} bytes.");
-            _stream.Write(Encoding.ASCII.GetBytes(buffer), 0, buffer.Length);
+            _stream.Write(Latin1.GetBytes(buffer), 0, buffer.Length);
             _stream.Write(CRLF);
             _stream.Flush();
         }
 
         public void Write(string s)
         {
-            Write(Encoding.ASCII.GetBytes(s));
+            Write(Latin1.GetBytes(s));
         }
     }
 }

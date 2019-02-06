@@ -136,7 +136,7 @@ namespace FressClient
                 0x97, 0x98, 0x99, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6,
                 0xA7, 0xA8, 0xA9, 0xC0, 0x6A, 0xD0, 0xA1, 0x07,
             };
-
+            /*
             private byte ToASCII(byte b)
             {
                 return (byte)CP37[b / 16][b % 16];
@@ -156,6 +156,7 @@ namespace FressClient
             {
                 return Encoding.ASCII.GetString(Encoding.ASCII.GetBytes(s).Select(ToASCII).ToArray());
             }
+            */
         }
 
         void SetWindowConfig(WindowConfig config)
@@ -248,9 +249,9 @@ namespace FressClient
             }
         }
 
-        private Regex _windowCommand = new Regex(@"^\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?<op1>\d)(?<op2>\d)", RegexOptions.Singleline);
-        private Regex _commandWithTextRegex = new Regex(@"^\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?>`(?<line>[^\r]*\r\n))*`\|", RegexOptions.Singleline);
-        private Regex _specialCommandRegex = new Regex(@"^\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)`(?<data>.*?)\r\n` ",  RegexOptions.Singleline);
+        private Regex _windowCommand = new Regex(@"^\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>2)(?<flag2>\d)(?<op1>\d)(?<op2>\d)", RegexOptions.Singleline);
+        private Regex _commandWithTextRegex = new Regex(@"^\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?>\t(?<line>[^\r]*\r\n))*\t¦", RegexOptions.Singleline);
+        private Regex _specialCommandRegex = new Regex(@"^\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>4)(?<flag2>\d)\t(?<data>.*?)\r\n\t»",  RegexOptions.Singleline);
         private Regex _residueRegex = new Regex(@"^(?<junk>[^\\]+)(?<data>\\.*)?$", RegexOptions.Singleline);
         private Regex _badcommand = new Regex(@"^(?<junk>\\[^\\]+)(?<data>\\.*)$", RegexOptions.Singleline);
         private string _responseBuffer = "";
