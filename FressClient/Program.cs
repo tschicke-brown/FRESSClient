@@ -3,13 +3,14 @@ using SFML.System;
 using SFML.Window;
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Drawing;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using Color = SFML.Graphics.Color;
+using System.Threading.Tasks;
+
 
 namespace FressClient
 {
@@ -47,7 +48,7 @@ namespace FressClient
         }
 
         public static Font Font;
-        public static readonly uint FontSize = 30;
+        public static readonly uint FontSize = 40;
         public static readonly uint MenuFontSize = 30;
 
         public Buffer CommandBuffer, ErrorBuffer;
@@ -90,6 +91,7 @@ namespace FressClient
 
         public static float CharWidth { get; private set; }
         public static float CharHeight { get; private set; }
+        public static int MillisecondEventThrottle = 200;
 
         class Sender
         {
@@ -134,7 +136,7 @@ namespace FressClient
                 0x97, 0x98, 0x99, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6,
                 0xA7, 0xA8, 0xA9, 0xC0, 0x6A, 0xD0, 0xA1, 0x07,
             };
-
+            /*
             private byte ToASCII(byte b)
             {
                 return (byte)CP37[b / 16][b % 16];
@@ -154,6 +156,7 @@ namespace FressClient
             {
                 return Encoding.ASCII.GetString(Encoding.ASCII.GetBytes(s).Select(ToASCII).ToArray());
             }
+            */
         }
 
         void SetWindowConfig(WindowConfig config)
@@ -246,15 +249,15 @@ namespace FressClient
             }
         }
 
-        private Regex _commandRegex = new Regex(@"^ ? ?\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?<op1>\d)?(?<op2>\d)?\\", RegexOptions.Multiline);
-        private Regex _commandWithTextRegex = new Regex(@"^ ? ?\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?<op1>\d)?(?<op2>\d)? (?<data>.*?)\|", RegexOptions.Multiline | RegexOptions.Singleline);
-        private Regex _specialCommandRegex = new Regex(@"^ ? ?\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d) (?<data>.*?)\n", RegexOptions.Multiline | RegexOptions.Singleline);
+        private Regex _windowCommand = new Regex(@"^\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>2)(?<flag2>\d)(?<op1>\d)(?<op2>\d)", RegexOptions.Singleline);
+        private Regex _commandWithTextRegex = new Regex(@"^\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>\d)(?<flag2>\d)(?>\t(?<line>[^\r]*\r\n))*\t¦", RegexOptions.Singleline);
+        private Regex _specialCommandRegex = new Regex(@"^\\(?<winNum>\d)(?<curWinNum>\d)(?<flag1>4)(?<flag2>\d)\t(?<data>.*?)\r\n\t»",  RegexOptions.Singleline);
+        private Regex _residueRegex = new Regex(@"^(?<junk>[^\\]+)(?<data>\\.*)?$", RegexOptions.Singleline);
+        private Regex _badcommand = new Regex(@"^(?<junk>\\[^\\]+)(?<data>\\.*)$", RegexOptions.Singleline);
         private string _responseBuffer = "";
 
         private void HandleResponse(string response)
         {
-            _responseBuffer += response;
-
             void HandleCommand(int window, int currentWindow, Flag1 flag1, Flag2 flag2, int? windowConfig, string text)
             {
                 if (flag1.HasFlag(Flag1.TxWindowDimensions))
@@ -274,12 +277,29 @@ namespace FressClient
                 }
                 else if (!flag1.HasFlag(Flag1.TxBinaryData) && text != null)
                 {
-                    Buffers[window - 1].BufferText = text.Replace("\r", "");
+                    if (window <= Buffers.Length)
+                        Buffers[window - 1].BufferText = text.Replace("\r", "");
+                    else Console.WriteLine($"Fress talking to nonexistent window {window}. Contents: {text}");
                 }
             }
             bool ParseCommand()
             {
-                Match commandMatch = _commandRegex.Match(_responseBuffer);
+                if (_responseBuffer.Length == 0)
+                    return false;
+                Match residueMatch = _residueRegex.Match(_responseBuffer);
+                if (residueMatch.Success)
+                {
+                    Console.WriteLine("Non-FRESS output: ");
+                    Console.WriteLine(residueMatch.Groups["junk"].Captures[0].Value);
+                    if (residueMatch.Groups["data"].Captures.Count > 0)
+                    {
+                        _responseBuffer = residueMatch.Groups["data"].Captures[0].Value;
+                    }
+                    else { 
+                        _responseBuffer = "";
+                    }
+                }
+                Match commandMatch = _windowCommand.Match(_responseBuffer);
                 if (commandMatch.Success)
                 {
                     int window = commandMatch.Groups["winNum"].Captures[0].Value[0] - '0';
@@ -304,15 +324,17 @@ namespace FressClient
                     int currentWindow = commandTextMatch.Groups["curWinNum"].Captures[0].Value[0] - '0';
                     Flag1 flag1 = (Flag1)commandTextMatch.Groups["flag1"].Captures[0].Value[0] - '0';
                     Flag2 flag2 = (Flag2)commandTextMatch.Groups["flag2"].Captures[0].Value[0] - '0';
-                    int? windowConfig = null;
-                    Group windowConfigMatch = commandTextMatch.Groups["op1"];
-                    if (windowConfigMatch.Success)
-                    {
-                        windowConfig = windowConfigMatch.Captures[0].Value[0] - '0';
-                    }
 
-                    string text = commandTextMatch.Groups["data"].Captures[0].Value;
-                    HandleCommand(window, currentWindow, flag1, flag2, windowConfig, text);
+                    string text = "";
+                    if (commandTextMatch.Groups["line"].Success)
+                    {
+                        foreach(Capture cap in commandTextMatch.Groups["line"].Captures) {
+                            string line = cap.Value;
+                            //trim delimiters from matched string
+                            text = text + line.Substring(0, line.Length);
+                        }
+                    }
+                    HandleCommand(window, currentWindow, flag1, flag2, null, text);
                     _responseBuffer = _responseBuffer.Substring(commandTextMatch.Index + commandTextMatch.Length);
                     return true;
                 }
@@ -334,32 +356,59 @@ namespace FressClient
                         return true;
                     }
                 }
-                Console.Write(_responseBuffer);
+                Match bad = _badcommand.Match(_responseBuffer);
+                if (bad.Success && bad.Length != 0)
+                {
+                    if (bad.Groups["junk"].Success)
+                    {
+                        Console.WriteLine("Bad FRESS Protocol or Non-FRESS output: ");
+                        Console.WriteLine(bad.Groups["junk"].Captures[0].Value);
+                    }
+                    if (bad.Groups["data"].Success)
+                        _responseBuffer = bad.Groups["data"].Captures[0].Value;
+                    Console.WriteLine("Remaining to process: ");
+                    Console.WriteLine(_responseBuffer);
+                }
                 return false;
             }
-
+            _responseBuffer += response;
             while (ParseCommand()) ;
+
         }
 
         //public Scripting Scripting;
         public TelnetSocket Socket;
-        private DateTime last_time = DateTime.Now;
+        private BlockingCollection<string> _commands = new BlockingCollection<string>(5);
         private void SubmitCommand(string command)
         {
-            TimeSpan interval = DateTime.Now - last_time;
-            if (interval.TotalMilliseconds < 400)
+            System.Threading.Thread.Yield();
+            _commands.Add(command);
+        }
+        private DateTime last_time = DateTime.Now;
+
+        private void StartSending()
+        {
+            Task.Factory.StartNew(async () =>
             {
-                OnDataAvailable();
-                System.Threading.Thread.Sleep(interval);
+                while (true)
+                {
+                    TimeSpan interval = DateTime.Now - last_time;
+                    if (interval.TotalMilliseconds < MillisecondEventThrottle)
+                    {
+                        await Task.Delay(MillisecondEventThrottle - (int)interval.TotalMilliseconds);
+                    }
+                    String command = _commands.Take();
+                    Socket.WriteCommand(command);
+                    Console.WriteLine($"Sent command: {command}");
+                    last_time = DateTime.Now;
+                    System.Threading.Thread.Yield();
+                    System.Threading.Thread.Yield();
+                }
             }
-
-
-            //Scripting.Send(command + "\r\n");
-            Socket.Write(command + "\r\n");
-            Console.WriteLine($"Sent command: {command}");
+            );
         }
 
-        private void OnDataAvailable()
+        private void HandleRemoteResponses()
         {
             string res = Socket.Read();
             if (res != null)
@@ -533,37 +582,7 @@ namespace FressClient
             string ip = args[0];
             int port = int.Parse(args[1]);
             Socket = new TelnetSocket(ip, port);
-            Socket.DataAvailable += OnDataAvailable;
-            //Telnet server = new Telnet(ip, port);
-            //Scripting = server.StartScripting(new TerminalOptions() { TerminalType = TerminalType.Ansi, NewLineSequence = NewLineSequence.CRLF });
-            //Scripting scripting = Scripting;
-            //scripting.Timeout = 300;
-
-            //string res = scripting.ReadUntil(ScriptEvent.Timeout);
-            //Console.WriteLine(res);
-            //scripting.Send(ConsoleKey.Enter, 0);
-            //res = scripting.ReadUntil(ScriptEvent.Timeout);
-            //Console.WriteLine(res);
-            //if (res.StartsWith("CMS"))
-            //{
-
-            //}
-            //else
-            //{
-            //    scripting.Send("l dgd plasmate");
-            //    Console.WriteLine(scripting.ReadUntil(ScriptEvent.Timeout));
-            //    scripting.Send("b");
-            //    Console.WriteLine(scripting.ReadUntil(ScriptEvent.Timeout));
-            //    scripting.Send(ConsoleKey.Enter, 0);
-            //    res = scripting.ReadUntil(ScriptEvent.Timeout);
-            //    Console.WriteLine(res);
-            //    if (!res.StartsWith("CMS"))
-            //    {
-            //        //Console.WriteLine("Error connecting to 370");
-            //        //return;
-            //    }
-            //}
-
+            StartSending();
             while (window.IsOpen)
             {
                 window.Clear(new Color(0, 0, 50));
@@ -583,9 +602,10 @@ namespace FressClient
                 {
                     commandWindow.Draw(rectangleShape);
                 }
-
-                commandWindow.Display();
                 window.Display();
+                commandWindow.Display();
+                HandleRemoteResponses();
+                System.Threading.Thread.Yield();
             }
         }
 
@@ -599,8 +619,9 @@ namespace FressClient
             private void Window_MouseWheelScrolled(object sender, MouseWheelScrollEventArgs e)
         {
             TimeSpan interval = DateTime.Now - last_time;
-            if (interval.TotalMilliseconds < 500)
+            if (interval.TotalMilliseconds < MillisecondEventThrottle)
             {
+                //System.Threading.Thread.Yield();
                 return;
             }
             for (int index = 0; index < Buffers.Length; index++)
@@ -610,7 +631,7 @@ namespace FressClient
                     new Vector2f(buffer.CharacterSize.X * CharWidth, buffer.CharacterSize.Y * CharHeight));
                 if (bounds.Contains(e.X, e.Y))
                 {
-                    int val = ((int)(-e.Delta * 8));
+                    int val = ((int)(-e.Delta * 12));
                     if (val < -12) {
                         val = -12;
                     }
@@ -620,16 +641,7 @@ namespace FressClient
                     }
                     if (val != 0)
                     {
-                        if (CurrentBufferIndex != index)
-                        {
-                            SubmitCommand("cw " + (index + 1));
-                            // Also important that we do this only for unignored scroll events
-                            // track the current window actively, as fress may not give us the news for a while. otherwise we will keep
-                            // issuing commands when it's not necessary. Anything that happens at the fress end will see the current window as this
-                            // one, since the commands are executed in order.
-                            HandleResponse("\\"+index+index+"40 scrolling\r\n");
-                        }
-                        SubmitCommand(val.ToString());
+                        SubmitCommand("sc/"+val.ToString()+"/"+(index+1));
                     }
 
                     break;
@@ -685,6 +697,7 @@ namespace FressClient
             }
         }
 
+        private bool _shifted = false;
         private void Window_MouseButtonReleased(object sender, MouseButtonEventArgs e)
         {
             for (int index = 0; index < Buffers.Length; index++)
@@ -694,7 +707,7 @@ namespace FressClient
                     new Vector2f(buffer.CharacterSize.X * CharWidth, buffer.CharacterSize.Y * CharHeight));
                 if (bounds.Contains(e.X, e.Y))
                 {
-                    if (e.Button == Mouse.Button.Middle || Keyboard.IsKeyPressed(Keyboard.Key.LShift) || Keyboard.IsKeyPressed(Keyboard.Key.RShift))
+                    if (e.Button == Mouse.Button.Middle || _shifted)
                     {
                         SubmitCommand("cw " + (index + 1));
                     } else if (e.Button == Mouse.Button.Left || e.Button == Mouse.Button.Right)
@@ -729,6 +742,7 @@ namespace FressClient
                 default:
                     break;
             }
+            _shifted = Keyboard.IsKeyPressed(Keyboard.Key.LShift) || Keyboard.IsKeyPressed(Keyboard.Key.RShift);
         }
 
         private void Window_TextEntered(object sender, TextEventArgs e)

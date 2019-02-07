@@ -143,6 +143,20 @@ namespace FressClient
                     if (openBoldIndex == -2) openBoldIndex = str.IndexOf("!(0", i);
                     if (closeIndex == -2) closeIndex = str.IndexOf("!)", i);
 
+                    if (str.Substring(i,1) == "%" && str.Length > i+1)
+                    {
+                        if (start != i)
+                        {
+                            string segment = str.Substring(start, i - start);
+                            strings.Add((segment, initialStyle));
+                        }
+                        string seg2 = str.Substring(i, 2);
+                        strings.Add((seg2, Text.Styles.Bold));
+                        initialStyle = 0;
+                        i += 2;
+                        start = i; 
+                        continue;
+                    }
                     if (i == openItalicIndex)
                     {
                         if (start != i)
@@ -294,6 +308,17 @@ namespace FressClient
             int col = 0;
             for (int i = 0; i < BufferText.Length; ++i)
             {
+                if (BufferText.ElementAt(i) == '!') {
+                    if (BufferText.IndexOf("!(1", i) == i || BufferText.IndexOf("!(0", i) == i)
+                    {
+                        i += 2;
+                        continue;
+                    } else if (BufferText.IndexOf("!)", i) == i)
+                    {
+                        i++;
+                        continue;
+                    }
+                }
                 if (col == CharacterSize.X || BufferText[i] == '\n')
                 {
                     if (x >= rect.Left && y >= rect.Top && y < rect.Top + rect.Height)
@@ -371,7 +396,6 @@ namespace FressClient
             EndIndex = -1;
         }
 
-        //private static Regex r = new Regex( @"\.\.\.\.*");
         protected virtual void SendText(Mouse.Button button)
         {
             if (StartIndex == -1 || EndIndex == -1)
@@ -382,9 +406,9 @@ namespace FressClient
             string translation = "0123456789!$*_;?";
             string GetLP(int index)
             {
-                index = Math.Min(Math.Max(index, 1), BufferText.Length - 1);
+                index = Math.Min(Math.Max(index, 0), BufferText.Length);
                 Console.WriteLine("Index: " + index);
-                Console.WriteLine("text: " + BufferText.Substring(index-1, Math.Min(8,BufferText.Length-index-1)));
+                Console.WriteLine("text: " + BufferText.Substring(index, Math.Min(8,BufferText.Length-index)));
 
                 string s = "`";
                 uint temp = (uint) index;
@@ -402,9 +426,9 @@ namespace FressClient
             }
 
             int startI = Math.Min(StartIndex, EndIndex);
-            startI -= 2 * BufferText.Substring(0, startI).Count(c => c == '\n') + 1;
+            startI -= BufferText.Substring(0, startI).Count(c => c == '\n');
             int endI = Math.Max(StartIndex, EndIndex);
-            endI -= 2 * BufferText.Substring(0, endI).Count(c => c == '\n') + 1;
+            endI -= BufferText.Substring(0, endI).Count(c => c == '\n');
             if (StartIndex == EndIndex)
             {
                 TextClicked?.Invoke(GetLP(endI), button);
@@ -412,14 +436,6 @@ namespace FressClient
             else
             {
                 TextClicked?.Invoke(GetLP(startI) +GetLP(endI), Mouse.Button.Left);
-
-                //string startString = BufferText.Substring(startI, numChars);
-                //int end = Math.Min(BufferText.Length, endI + numChars);
-                //int start = end - numChars;
-                //string endString = BufferText.Substring(start, numChars);
-                //startString = r.Replace(startString, match => match.Value + ".").Trim();
-                //endString = r.Replace(endString, match => match.Value + ".").Trim();
-                //str = $"{startString}...{endString}";
             }
 
         }
