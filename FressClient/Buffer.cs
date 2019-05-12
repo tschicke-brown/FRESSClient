@@ -50,7 +50,7 @@ namespace FressClient
             _drawableText = new Text(BufferText, Program.Font, Program.FontSize);
             _cursor = new RectangleShape() { FillColor = new Color(Color.White) };
             _border = new RectangleShape() { FillColor = new Color(0, 0, 0, 0), OutlineColor = new Color(0x7f, 0x7f, 0x7f), OutlineThickness = 1 };
-            _textHighlight = new RectangleShape() { FillColor = new Color(0xff, 0xff, 0xff, 0x77) };
+            _textHighlight = new RectangleShape() { FillColor = new Color(0x77, 0x77, 0x77) };
             CharacterSize = characterSize;
         }
 
@@ -126,14 +126,14 @@ namespace FressClient
 
         private (Vector2f?, Text.Styles, int) DrawString(string s, RenderTarget target, RenderStates states, Text.Styles style, Vector2f position, int charsRendered)
         {
-            List<(string, Text.Styles)> SplitString(string str, Text.Styles initialStyle)
+            List<(string, Text.Styles, int, int)> SplitString(string str, Text.Styles initialStyle)
             {
                 if (DisableFormatting)
                 {
-                    return new List<(string, Text.Styles)> { (str, 0) };
+                    return new List<(string, Text.Styles, int, int)> { (str, 0, 0, 0) };
                 }
 
-                List<(string, Text.Styles)> strings = new List<(string, Text.Styles)>();
+                var strings = new List<(string, Text.Styles, int, int)>();
                 int openItalicIndex = -2, openBoldIndex = -2;
                 int closeIndex = -2;
                 int start = 0;
@@ -148,10 +148,10 @@ namespace FressClient
                         if (start != i)
                         {
                             string segment = str.Substring(start, i - start);
-                            strings.Add((segment, initialStyle));
+                            strings.Add((segment, initialStyle, 0, 0));
                         }
                         string seg2 = str.Substring(i, 2);
-                        strings.Add((seg2, Text.Styles.Bold));
+                        strings.Add((seg2, Text.Styles.Bold, 0, 0));
                         initialStyle = 0;
                         i += 2;
                         start = i; 
@@ -162,7 +162,7 @@ namespace FressClient
                         if (start != i)
                         {
                             string segment = str.Substring(start, i - start);
-                            strings.Add((segment, initialStyle));
+                            strings.Add((segment, initialStyle, 0, 0));
                         }
                         initialStyle = Text.Styles.Italic;
 
@@ -177,7 +177,7 @@ namespace FressClient
                         if (start != i)
                         {
                             string segment = str.Substring(start, i - start);
-                            strings.Add((segment, initialStyle));
+                            strings.Add((segment, initialStyle, 0, 0));
                         }
                         initialStyle = Text.Styles.Bold;
 
@@ -192,7 +192,7 @@ namespace FressClient
                         if (start != i)
                         {
                             string segment = str.Substring(start, i - start);
-                            strings.Add((segment, initialStyle));
+                            strings.Add((segment, initialStyle, 3, 5));
                         }
                         initialStyle = 0;
                         i += 2;
@@ -207,52 +207,52 @@ namespace FressClient
                 if (start != str.Length)
                 {
                     string segment = str.Substring(start);
-                    strings.Add((segment, initialStyle));
+                    strings.Add((segment, initialStyle, initialStyle == Text.Styles.Regular ? 0 : 3,
+                        initialStyle == Text.Styles.Regular ? 0 : 5));
                 }
 
                 return strings;
             }
 
-            List<(string, Text.Styles)> splits = SplitString(s, style);
+            List<(string, Text.Styles, int, int)> splits = SplitString(s, style);
             Vector2f? characterPos = null;
             int count = charsRendered;
             var starti = Math.Min(StartIndex, EndIndex);
             var endi = Math.Max(StartIndex, EndIndex) + 1;//Make it inclusive
-            foreach ((string subStr, Text.Styles subStyle) in splits)
+            foreach ((string subStr, Text.Styles subStyle, int hiddenStart, int hiddenTotal) in splits)
             {
                 _drawableText.DisplayedString = subStr;
                 _drawableText.CharacterSize = style == Text.Styles.Bold ? Program.FontSize - 2 : Program.FontSize;
                 _drawableText.Position = position;
                 _drawableText.Style = subStyle;
-                target.Draw(_drawableText, states);
                 if (_cursorIndex >= count && _cursorIndex <= count + subStr.Length)
                 {
                     characterPos = _drawableText.FindCharacterPos((uint)(_cursorIndex - count));
                     characterPos = new Vector2f(characterPos.Value.X, position.Y);
                 }
 
-                var strLen = subStyle == Text.Styles.Regular ? subStr.Length : subStr.Length + 5;
+                var strLen = subStyle == Text.Styles.Regular ? subStr.Length : subStr.Length + hiddenTotal;
                 if (starti != -1 && endi != -1)
                 {
-                    var offset = subStyle == Text.Styles.Regular ? 0 : 3;
                     var currentStart = starti > count + strLen ? -1 : Math.Max(starti, count) - count;
                     var currentEnd = endi <= count ? -1 : Math.Min(endi, count + strLen) - count;
                     if (currentStart != -1 && currentEnd != -1)
                     {
                         if (subStyle != Text.Styles.Regular)
                         {
-                            currentStart = Math.Max(0, currentStart - 3);
-                            currentEnd -= 3;
+                            currentStart = Math.Max(0, currentStart - hiddenStart);
+                            currentEnd = Math.Max(0, currentEnd - hiddenStart);
                         }
                         var startPos = _drawableText.FindCharacterPos((uint)currentStart);
                         startPos.X += position.X;
                         var endPos = _drawableText.FindCharacterPos((uint)currentEnd);
                         endPos.X += position.X;
-                        _textHighlight.Position = new Vector2f(startPos.X, position.Y);
+                        _textHighlight.Position = new Vector2f(startPos.X, position.Y + 5);
                         _textHighlight.Size = new Vector2f(endPos.X - startPos.X, Program.CharHeight);
                         target.Draw(_textHighlight, states);
                     }
                 }
+                target.Draw(_drawableText, states);
 
                 position.X += _drawableText.GetLocalBounds().Width;
                 count += strLen;
