@@ -231,14 +231,23 @@ namespace FressClient
                     characterPos = new Vector2f(characterPos.Value.X, position.Y);
                 }
 
+                var strLen = subStyle == Text.Styles.Regular ? subStr.Length : subStr.Length + 5;
                 if (starti != -1 && endi != -1)
                 {
-                    var currentStart = starti >= count + subStr.Length ? -1 : Math.Max(starti, count) - count;
-                    var currentEnd = endi < count ? -1 : Math.Min(endi, count + subStr.Length) - count;
+                    var offset = subStyle == Text.Styles.Regular ? 0 : 3;
+                    var currentStart = starti > count + strLen ? -1 : Math.Max(starti, count) - count;
+                    var currentEnd = endi <= count ? -1 : Math.Min(endi, count + strLen) - count;
                     if (currentStart != -1 && currentEnd != -1)
                     {
+                        if (subStyle != Text.Styles.Regular)
+                        {
+                            currentStart = Math.Max(0, currentStart - 3);
+                            currentEnd -= 3;
+                        }
                         var startPos = _drawableText.FindCharacterPos((uint)currentStart);
+                        startPos.X += position.X;
                         var endPos = _drawableText.FindCharacterPos((uint)currentEnd);
+                        endPos.X += position.X;
                         _textHighlight.Position = new Vector2f(startPos.X, position.Y);
                         _textHighlight.Size = new Vector2f(endPos.X - startPos.X, Program.CharHeight);
                         target.Draw(_textHighlight, states);
@@ -246,7 +255,7 @@ namespace FressClient
                 }
 
                 position.X += _drawableText.GetLocalBounds().Width;
-                count += subStr.Length;
+                count += strLen;
             }
 
 
